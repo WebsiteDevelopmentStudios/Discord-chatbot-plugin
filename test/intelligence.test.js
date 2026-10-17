@@ -149,3 +149,9 @@ test("calculates arithmetic even when the question contains a common typo", () =
   assert.match(result.choices[0].message.content, /81/);
   assert.equal(result.intent, "math");
 });
+
+test("retrieves expanded offline knowledge about computer memory", () => {
+  const result = generateReply({ message: "whats the diffrence between ram and storage", conversationId: "ram-storage-typo" });
+  assert.match(result.choices[0].message.content, /temporary working memory|SSD|storage/i);
+  assert.equal(result.intent, "built_in_knowledge");
+});
