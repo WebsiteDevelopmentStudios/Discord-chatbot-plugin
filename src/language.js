@@ -41,6 +41,7 @@ export function normalizeForUnderstanding(input) {
     const expansions = { re: " are", ve: " have", ll: " will", d: " would", m: " am", s: " is" };
     return stem + (expansions[suffix] || "");
   });
+  text = text.replace(/\bdon't\b/gu, "do not").replace(/\bdoesn't\b/gu, "does not").replace(/\bdidn't\b/gu, "did not").replace(/\bcan't\b/gu, "cannot").replace(/\bwon't\b/gu, "will not").replace(/\bisn't\b/gu, "is not").replace(/\baren't\b/gu, "are not");
   text = text.replace(/[^\p{L}\p{N}' +*/%().-]+/gu, " ");
   text = text.replace(/\b[a-z]+\b/gu, (word) => COMMON_CORRECTIONS.get(word) || word);
   for (const [pattern, replacement] of SYNONYMS) text = text.replace(pattern, replacement);
