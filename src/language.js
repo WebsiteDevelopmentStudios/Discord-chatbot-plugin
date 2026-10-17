@@ -1,10 +1,8 @@
 // Lightweight language normalization for the no-model fallback.
 // The bundled word-list package supplies a broad English lexicon. This improves
 // spelling recovery, but vocabulary lookup alone is not semantic understanding.
-import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-
-const require = createRequire(import.meta.url);
+import wordListPath from "word-list";
 const COMMON_CORRECTIONS = new Map(Object.entries({
   teh: "the", waht: "what", wahts: "what is", whta: "what", wat: "what", wht: "what",
   hwo: "how", hw: "how", wher: "where", wen: "when", wich: "which",
@@ -43,7 +41,6 @@ const SYNONYMS = [
 let dictionary = new Set();
 let dictionaryBuckets = new Map();
 try {
-  const wordListPath = require("word-list");
   const words = readFileSync(wordListPath, "utf8").split(/\r?\n/u);
   for (const raw of words) {
     const word = raw.trim().toLowerCase();
