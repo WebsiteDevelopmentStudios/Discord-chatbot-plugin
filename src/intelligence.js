@@ -251,10 +251,10 @@ const RULE_ONLY_INTENTS = new Set([
   "math", "memory_store", "memory_recall", "history_recall", "identity", "capabilities"
 ]);
 
-export async function generateReplyAsync({ message, conversationId = "default", history = [] }) {
+export async function generateReplyAsync({ message, conversationId = "default", history = [], providerEnv = process.env, fetchImpl = fetch }) {
   const fallback = generateReply({ message, conversationId, history });
   const intent = fallback.intent;
-  const status = getModelStatus();
+  const status = getModelStatus(providerEnv);
   if (!status.configured || RULE_ONLY_INTENTS.has(intent)) {
     return { ...fallback, engine: "rules", providerStatus: status };
   }
@@ -263,7 +263,7 @@ export async function generateReplyAsync({ message, conversationId = "default", 
   const state = conversations.get(id);
   const previousHistory = state ? state.history.slice(0, -2) : [];
   const knowledge = knowledgeAnswer(String(message));
-  const answer = await completeWithModel({ message, history: previousHistory, knowledge });
+  const answer = await completeWithModel({ message, history: previousHistory, knowledge, env: providerEnv, fetchImpl });
   if (!answer) return { ...fallback, engine: "rules", providerStatus: status };
 
   if (state) {
