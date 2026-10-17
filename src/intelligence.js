@@ -1,29 +1,24 @@
 const conversations = new Map();
 const MAX_CONVERSATIONS = 10_000;
 const MAX_HISTORY = 12;
-const STOP_WORDS = new Set(["the","a","an","is","are","was","were","to","of","and","or","in","on","for","it","this","that","i","you","me","my","your","we","do","does","what","how","why","when","where","who","can","could","would","should"]);
+const STOP_WORDS = new Set(["the","a","an","is","are","was","were","to","of","and","or","in","on","for","it","this","that","i","you","me","my","your","we","do","does","what","how","why","when","where","who","can","could","would","should","please","tell","about"]);
 
 function tokens(text) {
-  return String(text).toLowerCase().match(/[a-z0-9']+/g) || [];
+  return String(text).toLowerCase().match(/[\p{L}\p{N}']+/gu) || [];
 }
-
 function usefulTokens(text) {
   return tokens(text).filter((word) => word.length > 2 && !STOP_WORDS.has(word));
 }
-
 function overlapScore(a, b) {
-  const aa = new Set(usefulTokens(a));
-  const bb = new Set(usefulTokens(b));
+  const aa = new Set(usefulTokens(a)), bb = new Set(usefulTokens(b));
   if (!aa.size || !bb.size) return 0;
   let common = 0;
   for (const word of aa) if (bb.has(word)) common++;
   return common / new Set([...aa, ...bb]).size;
 }
-
 function normalize(text) {
   return String(text).trim().replace(/[.!?]+$/g, "").toLowerCase();
 }
-
 function getConversation(id) {
   if (!conversations.has(id)) {
     if (conversations.size >= MAX_CONVERSATIONS) {
@@ -34,130 +29,205 @@ function getConversation(id) {
   }
   return conversations.get(id);
 }
-
+function cleanFact(value) {
+  return value.trim().replace(/[,.!?]+$/g, "").replace(/\s+/g, " ").slice(0, 160);
+}
 function rememberFact(text, state) {
   const patterns = [
-    { regex: /\bmy name is ([\p{L}\p{N}_ -]{1,60})/iu, key: "name" },
-    { regex: /\bcall me ([\p{L}\p{N}_ -]{1,60})/iu, key: "name" },
-    { regex: /\bi live in ([\p{L}\p{N}_ ,'-]{1,80})/iu, key: "location" },
-    { regex: /\bi like ([^.!?]{1,100})/iu, key: "likes" }
+    { regex: /\bmy name is ([\p{L}\p{N}_ -]{1,60})/iu, key: "name", label: "your name" },
+    { regex: /\bcall me ([\p{L}\p{N}_ -]{1,60})/iu, key: "name", label: "your name" },
+    { regex: /\bi live in ([^.!?\n]{1,100})/iu, key: "location", label: "where you live" },
+    { regex: /\bi am from ([^.!?\n]{1,100})/iu, key: "location", label: "where you're from" },
+    { regex: /\bi like ([^.!?\n]{1,120})/iu, key: "likes", label: "something you like" },
+    { regex: /\bi love ([^.!?\n]{1,120})/iu, key: "likes", label: "something you love" },
+    { regex: /\bi dislike ([^.!?\n]{1,120})/iu, key: "dislikes", label: "something you dislike" },
+    { regex: /\bi hate ([^.!?\n]{1,120})/iu, key: "dislikes", label: "something you dislike" },
+    { regex: /\bi work as (?:a |an )?([^.!?\n]{1,100})/iu, key: "job", label: "your job" },
+    { regex: /\bi am learning ([^.!?\n]{1,100})/iu, key: "learning", label: "what you're learning" }
   ];
-  for (const pattern of patterns) {
-    const match = text.match(pattern.regex);
-    if (match) {
-      const value = match[1].trim().replace(/[,.!?]+$/g, "");
-      if (value) {
-        state.facts[pattern.key] = value;
-        return { key: pattern.key, value };
-      }
-    }
+  for (const p of patterns) {
+    const m = text.match(p.regex);
+    if (!m) continue;
+    const value = cleanFact(m[1]);
+    if (!value) continue;
+    state.facts[p.key] = value;
+    return { key: p.key, value, label: p.label };
   }
   return null;
 }
 
-function answerMath(text) {
-  const match = text.match(/(?:what is|calculate|compute)?\s*(-?\d+(?:\.\d+)?)\s*([+*/-])\s*(-?\d+(?:\.\d+)?)/i);
-  if (!match) return null;
-  const a = Number(match[1]);
-  const b = Number(match[3]);
-  let result;
-  switch (match[2]) {
-    case "+": result = a + b; break;
-    case "-": result = a - b; break;
-    case "*": result = a * b; break;
-    case "/":
-      if (b === 0) return "Division by zero is undefined.";
-      result = a / b;
-      break;
-    default: return null;
+// A small recursive-descent calculator. It intentionally supports arithmetic only,
+// and never evaluates user text as JavaScript.
+function calculate(text) {
+  let expression = text.trim()
+    .replace(/^(?:what is|calculate|compute|solve|work out)\s+/i, "")
+    .replace(/[×✕]/g, "*").replace(/[÷]/g, "/").replace(/−/g, "-")
+    .replace(/\bplus\b/gi, "+").replace(/\bminus\b/gi, "-")
+    .replace(/\btimes\b/gi, "*").replace(/\bmultiplied by\b/gi, "*")
+    .replace(/\bdivided by\b/gi, "/");
+  if (!expression || expression.length > 100 || !/^[\d\s()+\-*/%.^]+$/.test(expression)) return null;
+  const parts = expression.match(/\d+(?:\.\d+)?|[()+\-*/%.^]/g);
+  if (!parts || parts.join("") !== expression.replace(/\s/g, "")) return null;
+  let i = 0;
+  function primary() {
+    if (parts[i] === "+") { i++; return primary(); }
+    if (parts[i] === "-") { i++; return -primary(); }
+    if (parts[i] === "(") {
+      i++; const n = addSub();
+      if (parts[i] !== ")") throw new Error("paren");
+      i++; return n;
+    }
+    const token = parts[i++];
+    if (!token || !/^\d/.test(token)) throw new Error("number");
+    return Number(token);
   }
-  if (!Number.isFinite(result)) return null;
-  return `The answer is ${Number(result.toPrecision(12))}.`;
+  function power() {
+    let n = primary();
+    if (parts[i] === "^") { i++; n = n ** power(); }
+    return n;
+  }
+  function mulDiv() {
+    let n = power();
+    while (["*","/","%"].includes(parts[i])) {
+      const op = parts[i++], b = power();
+      if ((op === "/" || op === "%") && b === 0) throw new Error("zero");
+      n = op === "*" ? n * b : op === "/" ? n / b : n % b;
+    }
+    return n;
+  }
+  function addSub() {
+    let n = mulDiv();
+    while (parts[i] === "+" || parts[i] === "-") {
+      const op = parts[i++], b = mulDiv();
+      n = op === "+" ? n + b : n - b;
+    }
+    return n;
+  }
+  try {
+    const result = addSub();
+    if (i !== parts.length || !Number.isFinite(result) || Math.abs(result) > 1e100) return null;
+    return { result: Number(result.toPrecision(12)), expression };
+  } catch (error) {
+    if (error.message === "zero") return { error: "Division or remainder by zero is undefined." };
+    return null;
+  }
 }
-
 function bestHistoryMatch(question, history) {
-  let best = null;
-  let score = 0;
+  let best = null, score = 0;
   for (const entry of history) {
     if (entry.role !== "user") continue;
     const next = overlapScore(question, entry.content);
     if (next > score) { best = entry.content; score = next; }
   }
-  return score >= 0.25 ? best : null;
+  return score >= 0.22 ? best : null;
 }
-
+function answerFromNotes(text, state) {
+  const note = [...(Array.isArray(state.facts.notes) ? state.facts.notes : [])].reverse()
+    .find((item) => overlapScore(text, item) >= 0.18);
+  return note || null;
+}
+const KNOWLEDGE = [
+  { keys: ["api", "application programming interface", "endpoint"], answer: "An API (application programming interface) is a defined way for software to communicate with another program. An endpoint is a particular URL or operation exposed by an API. In this project, your app sends an HTTP request to an endpoint, and the server returns JSON." },
+  { keys: ["json"], answer: "JSON (JavaScript Object Notation) is a text format for structured data. It uses objects, arrays, strings, numbers, booleans, and null. APIs commonly send and receive JSON in HTTP request and response bodies." },
+  { keys: ["http", "https"], answer: "HTTP is the request/response protocol used by websites and many APIs. HTTPS is HTTP protected with TLS encryption. For public APIs, use HTTPS and avoid putting secret API keys in URLs." },
+  { keys: ["api key", "apikey", "bearer token"], answer: "An API key is a credential that identifies or authorizes a client. Keep secret keys out of public browser code and repositories. This prototype uses an Authorization: Bearer header; a browser playground is useful for testing, but keys entered into a public page are exposed to that browser session." },
+  { keys: ["machine learning", "artificial intelligence", " ai "], answer: "Artificial intelligence is a broad field of systems that perform tasks associated with perception, language, planning, or reasoning. Machine learning is one approach: a model learns patterns from data. This project currently uses hand-written rules and small built-in knowledge, not a trained language model, so it will not have the broad language ability of modern LLMs." },
+  { keys: ["large language model", "llm", "language model"], answer: "A large language model (LLM) is a neural network trained on large amounts of text to predict and generate language. It can generalize across many topics, but it needs substantial training data and compute. A rule-based engine like this one is much cheaper to run, but its knowledge and flexibility are far more limited." },
+  { keys: ["javascript", "node.js", "nodejs"], answer: "JavaScript is a programming language widely used on the web. Node.js runs JavaScript outside the browser, which lets this project run its HTTP API server and intelligence code with the same language." },
+  { keys: ["render deployment", "render.com", "render hosting"], answer: "Render hosts this API as a web service. It starts the Node.js process and routes public HTTPS requests to it. Keep in mind that local files on a free service may not be durable across restarts or deployments; production API keys should live in persistent storage." },
+  { keys: ["conversation id", "conversation memory", "memory"], answer: "A conversation ID groups messages into one conversation so the engine can reuse context. In the current prototype, memory is stored in process memory, so it can disappear on a restart or when a request reaches a different instance. It is not long-term or durable memory." }
+];
+function knowledgeAnswer(text) {
+  const lower = " " + text.toLowerCase().replace(/[^\p{L}\p{N}.]+/gu, " ") + " ";
+  for (const item of KNOWLEDGE) {
+    if (item.keys.some((key) => lower.includes(" " + key.trim() + " ") || lower.includes(key))) return item.answer;
+  }
+  return null;
+}
 function respond(text, state) {
-  const clean = text.trim();
-  const normalized = normalize(clean);
-  const lower = clean.toLowerCase();
+  const clean = text.trim(), normalized = normalize(clean), lower = clean.toLowerCase();
+  const math = calculate(clean);
+  if (math?.error) return { text: math.error, intent: "math", confidence: 0.99 };
+  if (math) return { text: `The answer is ${math.result}.`, intent: "math", confidence: 0.99 };
 
-  const math = answerMath(clean);
-  if (math) return { text: math, intent: "math", confidence: 0.99 };
-
-  if (/^(hi|hello|hey|yo|sup|good morning|good afternoon|good evening)\b/i.test(normalized)) {
+  if (/^(hi|hello|hey|yo|sup|hiya|howdy|good morning|good afternoon|good evening|what's up|whats up)\b/i.test(normalized)) {
     const name = state.facts.name ? `, ${state.facts.name}` : "";
-    return { text: [`Hey${name}! What would you like to talk about?`, `Hello${name}! What's on your mind?`, `Hi${name}! How can I help?`][state.turns % 3], intent: "greeting", confidence: 0.94 };
+    return { text: [`Hey${name}! What would you like to talk about?`, `Hello${name}! What's on your mind?`, `Hi${name}! How can I help?`][state.turns % 3], intent: "greeting", confidence: 0.96 };
   }
-  if (/\b(who are you|what are you|your name)\b/i.test(lower)) {
-    return { text: "I'm an early, independently built conversational intelligence engine. I use language patterns, conversation context, and simple reasoning rules rather than an external AI model. I'm still learning how to handle more complex questions.", intent: "identity", confidence: 0.98 };
+  if (/\b(who are you|what are you|your name|are you (?:an? )?(?:ai|bot|human))\b/i.test(lower)) {
+    return { text: "I'm Zoi Intelligence, an independently built conversational engine. Right now I combine hand-written language rules, basic arithmetic, a small knowledge base, and conversation memory. I don't use a paid external model, and I'm still much more limited than a trained language model.", intent: "identity", confidence: 0.99 };
   }
-  if (/\b(how are you|how's it going|how are things)\b/i.test(lower)) {
-    return { text: "I'm running and ready to chat! I don't have feelings like a person, but I'm happy to help. How are things with you?", intent: "small_talk", confidence: 0.91 };
+  if (/\b(how are you|how's it going|how are things|how have you been)\b/i.test(lower)) {
+    return { text: "I'm up and running, ready to help! I don't have feelings or personal experiences, but I can chat and work through questions with you. How are you doing?", intent: "small_talk", confidence: 0.94 };
   }
-  if (/\b(thank you|thanks|thx|ty)\b/i.test(lower)) {
-    return { text: ["You're welcome!", "No problem — glad to help.", "Anytime!"][state.turns % 3], intent: "thanks", confidence: 0.96 };
+  if (/\b(thank you|thanks|thx|ty|appreciate it)\b/i.test(lower)) {
+    return { text: ["You're welcome!", "No problem — glad to help.", "Anytime!"][state.turns % 3], intent: "thanks", confidence: 0.98 };
   }
-  if (/\b(what is your purpose|what can you do|help me|help)\b/i.test(lower)) {
-    return { text: "I can chat, remember a few facts within this conversation, answer simple arithmetic, and use recent context to interpret follow-ups. My reasoning and general knowledge are still limited, so I may ask you to clarify when I don't know.", intent: "capabilities", confidence: 0.96 };
+  if (/\b(sorry|my apologies|i apologize)\b/i.test(lower)) {
+    return { text: "No worries. We can take it one step at a time.", intent: "empathy", confidence: 0.91 };
   }
-  if (/\b(what is my name|what's my name|do you know my name)\b/i.test(lower)) {
+  if (/\b(i feel|i'm feeling|i am feeling|i am sad|i'm sad|i am stressed|i'm stressed|i had a bad day|rough day)\b/i.test(lower)) {
+    return { text: "I'm sorry it's feeling that way. If you want to talk about it, I'm here to listen. What has been the hardest part?", intent: "empathy", confidence: 0.78 };
+  }
+  if (/\b(what is your purpose|what can you do|your capabilities|help me|^help$)\b/i.test(lower)) {
+    return { text: "I can hold a basic conversation, remember some details during this conversation, recall earlier messages, explain a few common programming/API concepts, and calculate arithmetic expressions. I don't have live web access or broad world knowledge, so I'll say when I'm unsure rather than pretend to know.", intent: "capabilities", confidence: 0.98 };
+  }
+  if (/\b(what is my name|what's my name|do you know my name|remember my name)\b/i.test(lower)) {
     return state.facts.name
-      ? { text: `You told me your name is ${state.facts.name}.`, intent: "memory_recall", confidence: 0.98 }
-      : { text: "You haven't told me your name in this conversation yet. You can say “my name is …” and I'll remember it for this conversation.", intent: "memory_recall", confidence: 0.95 };
+      ? { text: `You told me your name is ${state.facts.name}.`, intent: "memory_recall", confidence: 0.99 }
+      : { text: "You haven't told me your name in this conversation yet. You can say “my name is …” and I'll remember it for this conversation.", intent: "memory_recall", confidence: 0.96 };
   }
-  if (/\b(where do i live|where am i from)\b/i.test(lower)) {
-    return state.facts.location
-      ? { text: `You told me you live in ${state.facts.location}.`, intent: "memory_recall", confidence: 0.98 }
-      : { text: "I don't know where you live yet. If you'd like, tell me and I can remember it for this conversation.", intent: "memory_recall", confidence: 0.9 };
+  if (/\b(where do i live|where am i from|what is my location)\b/i.test(lower)) {
+    return state.facts.location ? { text: `You told me ${state.facts.location}.`, intent: "memory_recall", confidence: 0.98 } : { text: "I don't know your location yet. If you want, tell me where you're from and I'll remember it during this conversation.", intent: "memory_recall", confidence: 0.93 };
   }
-  if (/\b(what do i like|what are my interests)\b/i.test(lower)) {
-    return state.facts.likes
-      ? { text: `You told me you like ${state.facts.likes}.`, intent: "memory_recall", confidence: 0.98 }
-      : { text: "I haven't learned your interests yet. Tell me something you like and I can remember it during this conversation.", intent: "memory_recall", confidence: 0.9 };
+  if (/\b(what do i like|what are my interests|what do i love)\b/i.test(lower)) {
+    return state.facts.likes ? { text: `You told me you like ${state.facts.likes}.`, intent: "memory_recall", confidence: 0.98 } : { text: "I haven't learned your interests yet. Tell me something you like and I'll remember it during this conversation.", intent: "memory_recall", confidence: 0.93 };
   }
-  if (/\b(what did i say|what were we talking about|remind me what i said)\b/i.test(lower)) {
+  if (/\b(what do i dislike|what do i hate)\b/i.test(lower)) {
+    return state.facts.dislikes ? { text: `You told me you dislike ${state.facts.dislikes}.`, intent: "memory_recall", confidence: 0.98 } : { text: "You haven't told me what you dislike yet.", intent: "memory_recall", confidence: 0.92 };
+  }
+  if (/\b(what is my job|what do i do for work|what am i learning)\b/i.test(lower)) {
+    const key = /learning/.test(lower) ? "learning" : "job";
+    return state.facts[key] ? { text: key === "job" ? `You told me you work as ${state.facts[key]}.` : `You told me you're learning ${state.facts[key]}.`, intent: "memory_recall", confidence: 0.97 } : { text: key === "job" ? "You haven't told me your job yet." : "You haven't told me what you're learning yet.", intent: "memory_recall", confidence: 0.9 };
+  }
+  if (/\b(what did i say|what were we talking about|remind me what i said|what was my last message)\b/i.test(lower)) {
     const previous = [...state.history].reverse().find((entry) => entry.role === "user" && entry.content !== clean);
-    return previous
-      ? { text: `Earlier, you said: “${previous.content.slice(0, 500)}”`, intent: "history_recall", confidence: 0.9 }
-      : { text: "This is the first message I've recorded in this conversation, so I don't have an earlier message to recall.", intent: "history_recall", confidence: 0.85 };
+    return previous ? { text: `Earlier, you said: “${previous.content.slice(0, 500)}”`, intent: "history_recall", confidence: 0.96 } : { text: "This is the first message I've recorded in this conversation, so there's no earlier message to recall yet.", intent: "history_recall", confidence: 0.9 };
   }
-  if (/\b(remember that|please remember)\b/i.test(lower)) {
-    const fact = clean.replace(/^.*?\b(?:remember that|please remember)\b\s*/i, "").trim();
+  if (/\b(remember that|please remember|keep in mind)\b/i.test(lower)) {
+    const fact = clean.replace(/^.*?\b(?:remember that|please remember|keep in mind)\b\s*/i, "").trim();
     if (fact) {
-      state.facts.notes = [...(Array.isArray(state.facts.notes) ? state.facts.notes : []), fact].slice(-20);
-      return { text: `I'll keep that in mind for this conversation: “${fact.slice(0, 250)}”`, intent: "memory_store", confidence: 0.88 };
+      state.facts.notes = [...(Array.isArray(state.facts.notes) ? state.facts.notes : []), fact.slice(0, 300)].slice(-20);
+      return { text: `Got it — I'll keep this in mind for this conversation: “${fact.slice(0, 250)}”`, intent: "memory_store", confidence: 0.94 };
     }
   }
-
   const fact = rememberFact(clean, state);
-  if (fact) {
-    const labels = { name: "your name", location: "where you live", likes: "something you like" };
-    return { text: `Got it — I'll remember ${labels[fact.key]} is ${fact.value} during this conversation.`, intent: "memory_store", confidence: 0.93 };
+  if (fact) return { text: `Got it — I'll remember ${fact.label}: ${fact.value} during this conversation.`, intent: "memory_store", confidence: 0.96 };
+
+  const noted = answerFromNotes(clean, state);
+  if (noted && /\b(what|which|remind|remember|tell me)\b/i.test(lower)) return { text: `You asked me to remember: “${noted}”.`, intent: "memory_recall", confidence: 0.83 };
+
+  const known = knowledgeAnswer(clean);
+  if (known && /\b(what|why|how|explain|define|tell me|describe|teach|meaning|is|are|does|do)\b/i.test(lower)) {
+    return { text: known, intent: "built_in_knowledge", confidence: 0.79 };
+  }
+  if (/\b(yes|yeah|yep|no|nope|okay|ok|sure|maybe|i think so|not really)\b/i.test(normalized)) {
+    const previous = [...state.history].reverse().find((entry) => entry.role === "assistant");
+    if (previous) return { text: "Got it. Could you tell me a little more about what you mean, so I don't assume the wrong thing?", intent: "contextual_reply", confidence: 0.55 };
   }
 
-  if (/^(why|how|what|when|where|who|which|can|could|would|should|is|are|do|does|did)\b/i.test(normalized)) {
-    const related = bestHistoryMatch(clean, state.history);
-    if (related) {
-      return { text: `I think this may connect to what you said earlier: “${related.slice(0, 300)}”. I don't have enough built-in knowledge to answer that reliably yet. Could you give me a little more detail about what you mean?`, intent: "contextual_question", confidence: 0.48 };
-    }
-    return { text: "I want to give you a useful answer, but my built-in knowledge is limited right now. Could you add a little context or explain what part you'd like me to focus on?", intent: "unknown_question", confidence: 0.28 };
+  const related = bestHistoryMatch(clean, state.history);
+  if (/^(why|how|what|when|where|who|which|can|could|would|should|is|are|do|does|did|explain|describe|tell me|and then|what about|how about)\b/i.test(normalized)) {
+    if (related) return { text: `This may connect to what you said earlier: “${related.slice(0, 300)}”. I can use that context, but I don't yet know enough to answer this reliably. Could you add one detail about what you're asking?`, intent: "contextual_question", confidence: 0.52 };
+    return { text: "I want to answer accurately, but I don't have enough built-in knowledge for that question yet. If you give me a little context, or tell me what kind of answer you're looking for, I'll try to help without guessing.", intent: "unknown_question", confidence: 0.3 };
   }
-
-  const previous = state.history.filter((entry) => entry.role === "user").at(-1);
-  if (previous && overlapScore(clean, previous.content) > 0.35) {
-    return { text: "I see you're continuing the same topic. Could you tell me a bit more about what you want to explore? I'm still developing my ability to understand nuanced conversations.", intent: "contextual_chat", confidence: 0.42 };
+  if (related && overlapScore(clean, related) > 0.3) {
+    return { text: `I think you're continuing the topic “${related.slice(0, 180)}”. What part would you like to explore next?`, intent: "contextual_chat", confidence: 0.53 };
   }
-  return { text: "I'm listening. Tell me a little more — I can follow basic conversation and remember some details, but my language and reasoning abilities are still under development.", intent: "general_chat", confidence: 0.35 };
+  if (/\b(bored|just chatting|talk to me|let's talk|lets talk)\b/i.test(lower)) {
+    return { text: "Sure, we can just chat. What's something you've been interested in lately, or would you rather hear a random question?", intent: "small_talk", confidence: 0.72 };
+  }
+  return { text: "I'm listening. I can follow basic conversation and use details from this chat, though my general knowledge is still limited. Tell me a bit more about what you're thinking, and I'll do my best.", intent: "general_chat", confidence: 0.4 };
 }
 
 export function generateReply({ message, conversationId = "default", history = [] }) {
@@ -166,27 +236,28 @@ export function generateReply({ message, conversationId = "default", history = [
   if (Array.isArray(history)) {
     for (const item of history.slice(-MAX_HISTORY)) {
       if (item && (item.role === "user" || item.role === "assistant") && typeof item.content === "string") {
-        state.history.push({ role: item.role, content: item.content.slice(0, 1000) });
+        const entry = { role: item.role, content: item.content.slice(0, 1000) };
+        const last = state.history.at(-1);
+        if (!last || last.role !== entry.role || last.content !== entry.content) state.history.push(entry);
       }
     }
     state.history = state.history.slice(-MAX_HISTORY);
   }
-  const result = respond(message, state);
-  state.history.push({ role: "user", content: message.slice(0, 1000) });
+  const result = respond(String(message), state);
+  state.history.push({ role: "user", content: String(message).slice(0, 1000) });
   state.history.push({ role: "assistant", content: result.text });
   state.history = state.history.slice(-MAX_HISTORY);
   state.turns += 1;
   return {
     id: `reply_${Date.now().toString(36)}`,
     object: "chat.completion",
-    model: "zoi-intelligence-0.1",
+    model: "zoi-intelligence-0.2",
     choices: [{ index: 0, message: { role: "assistant", content: result.text }, finish_reason: "stop" }],
     intent: result.intent,
     confidence: result.confidence,
     conversationId: id
   };
 }
-
 export function resetConversation(conversationId = "default") {
   return conversations.delete(String(conversationId).slice(0, 160));
 }
