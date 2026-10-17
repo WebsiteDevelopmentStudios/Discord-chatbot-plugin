@@ -225,6 +225,16 @@ function respond(text, state) {
   if (/\b(bored|just chatting|talk to me|let's talk|lets talk)\b/i.test(lower)) {
     return { text: "Sure, we can just chat. What's something you've been interested in lately, or would you rather hear a random question?", intent: "small_talk", confidence: 0.72 };
   }
+  // A single-word message often lacks enough context to infer the user's intent.
+  // Ask a neutral clarifying question instead of assuming a topic or using a generic fallback.
+  const messageWords = tokens(normalized);
+  if (messageWords.length === 1 && messageWords[0].length >= 2) {
+    return {
+      text: `What would you like to know or talk about regarding “${clean.slice(0, 100)}”?`,
+      intent: "ambiguous_input",
+      confidence: 0.52
+    };
+  }
   return { text: "I'm listening. I can follow basic conversation and use details from this chat, though my general knowledge is still limited. Tell me a bit more about what you're thinking, and I'll do my best.", intent: "general_chat", confidence: 0.4 };
 }
 
