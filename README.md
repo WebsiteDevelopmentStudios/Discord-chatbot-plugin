@@ -1,6 +1,6 @@
-# Discord Chatbot Intelligence API
+# Zoi Intelligence API
 
-A free, model-independent conversational intelligence API prototype. The project is designed for any developer or application; Mallow Bot is only one possible test client.
+A hybrid conversational intelligence API for any developer or application. Mallow Bot is only one possible test client. It combines a lightweight local rules/retrieval engine with optional local models (Ollama) or user-configured OpenAI-compatible model endpoints. No model connection is required for the API to start.
 
 ## Current capabilities
 
@@ -15,6 +15,57 @@ A free, model-independent conversational intelligence API prototype. The project
 - Automated tests with GitHub Actions.
 
 This is still a hand-built engine using language patterns, deterministic arithmetic, ranked retrieval over hand-authored knowledge, and conversation state—not a trained large language model. The larger knowledge base should improve answers on covered topics, but retrieval is not the same as understanding and it cannot reliably answer arbitrary questions. The engine reports uncertainty for questions outside its coverage. It has no live web access and does not learn new world knowledge automatically from conversations.
+
+## Hybrid model architecture
+
+Zoi uses a provider adapter rather than baking one model vendor into the core:
+
+1. **Rules and retrieval fallback:** deterministic arithmetic, conversation facts, memory, and curated reference knowledge work without a model connection.
+2. **Optional model reasoning:** open-ended conversation and questions can be sent to a configured model for broader language understanding. Relevant built-in reference text is included when available.
+3. **Graceful fallback:** an unavailable, misconfigured, timed-out, or unsuccessful model returns control to the local engine instead of taking the API down.
+4. **Provider-neutral API:** the chat endpoint keeps its response shape and reports the selected engine in `engine` and provider status in `providerStatus`.
+
+The model connection is configured by the **operator** using environment variables; callers cannot supply arbitrary URLs or credentials per request. This avoids turning a public API into an unrestricted server-side request proxy or exposing provider secrets.
+
+### Configure a local Ollama model
+
+Install Ollama and pull a model on a machine reachable from the API service. For example:
+
+```bash
+ollama pull qwen2.5:3b
+ollama serve
+```
+
+Set these environment variables where Zoi runs:
+
+- `ZOI_MODEL_MODE=auto` — use the model when configured; otherwise use rules.
+- `ZOI_MODEL_PROVIDER=ollama`
+- `ZOI_MODEL_BASE_URL=http://localhost:11434` — local host only for HTTP; use a reachable HTTPS endpoint for a remote host.
+- `ZOI_MODEL_NAME=qwen2.5:3b`
+- `ZOI_MODEL_TIMEOUT_MS=20000` — optional; clamped between 1 and 60 seconds.
+
+Ollama is contacted at `/api/chat`. If Zoi runs on Render, `localhost` means the Render container itself—not your home computer. A model on another machine must be securely reachable from Render, typically through a private network or authenticated HTTPS gateway. Do not expose an unauthenticated Ollama port directly to the public internet.
+
+### Configure an OpenAI-compatible endpoint
+
+Set:
+
+- `ZOI_MODEL_MODE=auto`
+- `ZOI_MODEL_PROVIDER=openai-compatible`
+- `ZOI_MODEL_BASE_URL=https://your-provider.example/v1`
+- `ZOI_MODEL_NAME=the-model-id`
+- `ZOI_MODEL_API_KEY=your-secret` (optional for endpoints that do not require one)
+- `ZOI_MODEL_TIMEOUT_MS=20000` (optional)
+
+The service appends `/chat/completions` unless the full endpoint is already supplied. Only HTTPS remote endpoints are accepted by the adapter. Keep secrets in the hosting provider's environment-variable settings, never in source control or client-side code.
+
+Set `ZOI_MODEL_MODE=rules` to disable model calls. `/health` reports whether a model is configured and the provider/model label, but never returns the API key.
+
+### Hardware and cost reality
+
+The rules-only engine can run on a small Node.js instance but is much less capable than a trained language model. Model quality and speed depend on the model weights, quantization, available RAM/VRAM, CPU/GPU, context length, concurrency, and inference server. A small quantized model (for example, 3B–8B parameters) may be a practical starting point on suitable consumer hardware, but it will not reliably outperform frontier models. Larger models can require substantial GPU memory and slower or more expensive hosting. A hosted endpoint may charge per token or request; using a local model avoids a per-request model API bill but still costs compute, power, bandwidth, and maintenance. Render's ordinary lightweight web-service instance should not be assumed to have enough RAM/VRAM to host a capable LLM.
+
+The project does not claim to be smarter than ChatGPT. The architecture makes it possible to connect stronger models and measure quality while keeping a free fallback.
 
 ## Run locally
 
@@ -86,7 +137,7 @@ curl -X POST http://localhost:3000/v1/chat/reset \
 - `GET /health` — service health.
 - `POST /v1/keys` — create a key; limited to 5 creations per IP per minute in this prototype.
 - `GET /v1/keys` — verify a key.
-- `POST /v1/chat/completions` — generate a reply using the built-in intelligence engine.
+- `POST /v1/chat/completions` — generate a reply using the configured model when available, with a built-in fallback.
 - `POST /v1/chat/reset` — clear a conversation's in-memory state.
 
 ## Security and deployment limitations
@@ -97,4 +148,4 @@ curl -X POST http://localhost:3000/v1/chat/reset \
 - Conversation memory is in-process, bounded, and not durable across restarts.
 - Do not send sensitive personal data to this prototype.
 - GitHub Actions runs tests; it does not deploy the API or generate a production key.
-- No paid AI provider or external model is used.
+- No model is called unless an operator configures one. A configured provider may charge for usage; users must check its pricing and terms.
