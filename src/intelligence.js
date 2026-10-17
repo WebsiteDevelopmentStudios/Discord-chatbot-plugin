@@ -140,14 +140,14 @@ function respond(text, state) {
   if (math?.error) return { text: math.error, intent: "math", confidence: 0.99 };
   if (math) return { text: `The answer is ${math.result}.`, intent: "math", confidence: 0.99 };
 
-  if (/^(hi|hello|hey|yo|sup|hiya|howdy|good morning|good afternoon|good evening|what's up|whats up)\b/i.test(normalized)) {
+  if (/^(hi|hello|hey|yo|sup|hiya|howdy|good morning|good afternoon|good evening|what's up|whats up|what is up)\b/i.test(normalized)) {
     const name = state.facts.name ? `, ${state.facts.name}` : "";
     return { text: [`Hey${name}! What would you like to talk about?`, `Hello${name}! What's on your mind?`, `Hi${name}! How can I help?`][state.turns % 3], intent: "greeting", confidence: 0.96 };
   }
   if (/\b(who are you|what are you|your name|are you (?:an? )?(?:ai|bot|human))\b/i.test(lower)) {
     return { text: "I'm Zoi Intelligence, an independently built hybrid conversational engine. I combine deterministic rules, arithmetic, retrieved knowledge, and conversation memory, and can use an optional local or OpenAI-compatible language model when the operator configures one. Without a configured model, I use the lightweight rules-and-retrieval fallback.", intent: "identity", confidence: 0.99 };
   }
-  if (/\b(how are you|how's it going|how are things|how have you been)\b/i.test(lower)) {
+  if (/\b(how are you|how's it going|how are things|how have you been|how is it going)\b/i.test(lower)) {
     return { text: "I'm up and running, ready to help! I don't have feelings or personal experiences, but I can chat and work through questions with you. How are you doing?", intent: "small_talk", confidence: 0.94 };
   }
   if (/\b(thank you|thanks|thx|ty|appreciate it)\b/i.test(lower)) {
