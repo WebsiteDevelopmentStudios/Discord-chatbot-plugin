@@ -1,3 +1,5 @@
+import { normalizeForUnderstanding, fuzzyTermMatch } from "./language.js";
+
 // Curated, searchable facts for the no-model intelligence engine.
 // This is retrieval over authored knowledge, not a claim of learned or live knowledge.
 const DOCUMENTS = [
@@ -48,7 +50,7 @@ function tokens(value) {
   return String(value).toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
 }
 function queryTerms(value) {
-  return new Set(tokens(value).filter((term) => term.length > 2 && !STOP.has(term) || (term.length === 2 && !STOP.has(term))));
+  return new Set(tokens(normalizeForUnderstanding(value)).filter((term) => (term.length > 2 || term.length === 2) && !STOP.has(term)));
 }
 function scoreDocument(query, document) {
   const q = queryTerms(query);
@@ -57,8 +59,8 @@ function scoreDocument(query, document) {
   const allTerms = new Set([...queryTerms(document.terms.join(" ")), ...queryTerms(document.text)]);
   let hits = 0, titleHits = 0;
   for (const term of q) {
-    if (allTerms.has(term)) hits++;
-    if (titleTerms.has(term)) titleHits++;
+    if (fuzzyTermMatch(term, allTerms)) hits++;
+    if (fuzzyTermMatch(term, titleTerms)) titleHits++;
   }
   const coverage = hits / q.size;
   const density = hits / Math.max(1, Math.sqrt(allTerms.size));
