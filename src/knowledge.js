@@ -65,23 +65,48 @@ function tokens(value) {
 function queryTerms(value) {
   return new Set(tokens(normalizeForUnderstanding(value)).filter((term) => (term.length > 2 || term.length === 2) && !STOP.has(term)));
 }
+function documentTerms(document) {
+  return new Set([...queryTerms(document.title), ...queryTerms(document.terms.join(" ")), ...queryTerms(document.text)]);
+}
+
+// Weight rarer query terms more strongly than common words. This is still local
+// lexical retrieval (not semantic embeddings), but it reduces matches caused by
+// generic words and makes topic-specific terms count for more.
 function scoreDocument(query, document) {
-  const q = queryTerms(query);
-  if (!q.size) return 0;
+  const q = [...queryTerms(query)];
+  if (!q.length) return 0;
   const titleTerms = queryTerms(document.title);
-  const allTerms = new Set([...queryTerms(document.terms.join(" ")), ...queryTerms(document.text)]);
-  let hits = 0, titleHits = 0;
+  const aliasTerms = queryTerms(document.terms.join(" "));
+  const bodyTerms = queryTerms(document.text);
+  const normalizedQuery = " " + normalizeForUnderstanding(query).replace(/[^\\p{L}\\p{N}]+/gu, " ").trim() + " ";
+  let totalWeight = 0, matchedWeight = 0, titleWeight = 0, aliasWeight = 0, bodyWeight = 0;
   for (const term of q) {
-    if (fuzzyTermMatch(term, allTerms)) hits++;
-    if (fuzzyTermMatch(term, titleTerms)) titleHits++;
+    const documentFrequency = DOCUMENTS.reduce((count, candidate) => {
+      const terms = documentTerms(candidate);
+      return count + (fuzzyTermMatch(term, terms) ? 1 : 0);
+    }, 0);
+    const idf = Math.log(1 + (DOCUMENTS.length - documentFrequency + 0.5) / (documentFrequency + 0.5));
+    totalWeight += idf;
+    const inTitle = fuzzyTermMatch(term, titleTerms);
+    const inAlias = fuzzyTermMatch(term, aliasTerms);
+    const inBody = fuzzyTermMatch(term, bodyTerms);
+    if (inTitle || inAlias || inBody) matchedWeight += idf;
+    if (inTitle) titleWeight += idf;
+    if (inAlias) aliasWeight += idf;
+    if (inBody) bodyWeight += idf;
   }
-  const coverage = hits / q.size;
-  const density = hits / Math.max(1, Math.sqrt(allTerms.size));
-  const alias = document.terms.some((term) => {
-    const normalized = term.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-    return normalized.length >= 2 && (" " + query.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ").includes(" " + normalized + " ");
+  if (!totalWeight) return 0;
+  const coverage = matchedWeight / totalWeight;
+  const titleBoost = titleWeight / totalWeight;
+  const aliasBoost = aliasWeight / totalWeight;
+  const bodyBoost = bodyWeight / totalWeight;
+  const exactPhrase = document.terms.some((term) => {
+    const phrase = term.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
+    return phrase.length >= 3 && normalizedQuery.includes(" " + phrase + " ");
   });
-  return coverage * 0.72 + titleHits * 0.16 + density * 0.12 + (alias ? 0.45 : 0);
+  // Keep the score bounded and require real term coverage; a single incidental
+  // word should not surface an unrelated document.
+  return Math.min(1.5, coverage * 0.62 + titleBoost * 0.12 + aliasBoost * 0.16 + bodyBoost * 0.10 + (exactPhrase ? 0.28 : 0));
 }
 
 export function retrieveKnowledge(query) {
