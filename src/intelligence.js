@@ -275,7 +275,7 @@ export async function generateReplyAsync({ message, conversationId = "default", 
     model: status.model || "zoi-intelligence-0.4",
     choices: [{ index: 0, message: { role: "assistant", content: answer }, finish_reason: "stop" }],
     intent: "model_response",
-    confidence: 0.75,
+    confidence: null,
     engine: status.provider,
     providerStatus: status
   };
