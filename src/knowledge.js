@@ -62,19 +62,23 @@ const STOP = new Set(["the","and","for","that","this","with","what","when","wher
 function tokens(value) {
   return String(value).toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
 }
-function queryTerms(value) {
-  return new Set(tokens(normalizeForUnderstanding(value)).filter((term) => (term.length > 2 || term.length === 2) && !STOP.has(term)));
+function filterTerms(value) {
+  return new Set(tokens(value).filter((term) => (term.length > 2 || term.length === 2) && !STOP.has(term)));
 }
-// Normalize each bundled document only once. Re-normalizing every document for
-// every query term made retrieval needlessly expensive because spelling recovery
-// scans the local dictionary. Cache term sets for fast repeat lookups.
+function queryTerms(value) {
+  return filterTerms(normalizeForUnderstanding(value));
+}
+// Reference articles are already authored and do not need typo correction.
+// Applying dictionary-based spelling recovery to every word in every article
+// makes the first request unnecessarily slow. Tokenize article text directly
+// and cache its term sets; normalize only the user's query.
 const DOCUMENT_TERM_CACHE = new Map();
 function documentTerms(document) {
   let cached = DOCUMENT_TERM_CACHE.get(document.id);
   if (!cached) {
-    const title = queryTerms(document.title);
-    const aliases = queryTerms(document.terms.join(" "));
-    const body = queryTerms(document.text);
+    const title = filterTerms(document.title);
+    const aliases = filterTerms(document.terms.join(" "));
+    const body = filterTerms(document.text);
     cached = { all: new Set([...title, ...aliases, ...body]), title, aliases, body };
     DOCUMENT_TERM_CACHE.set(document.id, cached);
   }
