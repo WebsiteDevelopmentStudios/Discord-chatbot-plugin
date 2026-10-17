@@ -9,11 +9,12 @@ A free, model-independent conversational intelligence API prototype. The project
 - Chat using `POST /v1/chat/completions`.
 - Natural greetings and small talk, simple empathy, capability and identity questions, arithmetic with operator precedence and parentheses, and uncertainty-aware fallback answers.
 - Conversation-scoped facts such as a user's name, location, likes/dislikes, job, and learning goals.
-- Conversation history recall, user-saved notes, a small built-in knowledge base for common API/web/programming concepts, and recent-history context.
+- Conversation history recall, user-saved notes, and relevance-ranked retrieval across a larger curated knowledge base covering APIs, HTTP, JavaScript, Node.js, Git, testing, security, databases, semantic search, AI/LLMs, hosting, Discord bots, Minecraft servers, networking, science, and other fundamentals.
+- Knowledge retrieval scores query terms and topic aliases rather than relying only on broad substring matching; short technical terms such as AI are handled explicitly.
 - Reset in-memory conversation state with `POST /v1/chat/reset`.
 - Automated tests with GitHub Actions.
 
-This is an early hand-built engine using language patterns, deterministic arithmetic, a small hand-authored knowledge base, and conversation state—not a trained large language model. The engine reports uncertainty for questions outside its limited knowledge. It is intentionally honest when it cannot answer a question. Its general knowledge and reasoning are currently limited.
+This is still a hand-built engine using language patterns, deterministic arithmetic, ranked retrieval over hand-authored knowledge, and conversation state—not a trained large language model. The larger knowledge base should improve answers on covered topics, but retrieval is not the same as understanding and it cannot reliably answer arbitrary questions. The engine reports uncertainty for questions outside its coverage. It has no live web access and does not learn new world knowledge automatically from conversations.
 
 ## Run locally
 
@@ -52,7 +53,7 @@ The response uses a simple chat-completion structure:
 ```json
 {
   "object": "chat.completion",
-  "model": "zoi-intelligence-0.2",
+  "model": "zoi-intelligence-0.3",
   "choices": [
     {
       "index": 0,
