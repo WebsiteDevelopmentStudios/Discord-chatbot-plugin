@@ -180,7 +180,18 @@
    try {
      const body = {message}; if ($("conversationId").value.trim()) body.conversationId = $("conversationId").value.trim();
      setThinking("working", "Checking conversation context and available knowledge…", "The live API is processing the request. The current engine uses local rules, conversation memory, arithmetic, and bundled knowledge retrieval.");
-     const data = await request("/v1/chat/completions", {method:"POST",key,body:JSON.stringify(body)});
+     // Never leave the activity panel spinning forever if a request stalls.
+     const controller = new AbortController();
+     const timeout = window.setTimeout(() => controller.abort(), 20000);
+     let data;
+     try {
+       data = await request("/v1/chat/completions", {method:"POST",key,body:JSON.stringify(body),signal:controller.signal});
+     } catch (error) {
+       if (error.name === "AbortError") throw new Error("Zoi's API did not respond within 20 seconds. The request was stopped so the chat can recover; please try again.");
+       throw error;
+     } finally {
+       window.clearTimeout(timeout);
+     }
      if (data.conversationId) $("conversationId").value = data.conversationId;
      const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : JSON.stringify(data);
      addBubble("assistant", reply, data.model || "Zoi Intelligence");
