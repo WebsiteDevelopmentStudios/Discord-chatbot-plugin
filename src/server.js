@@ -237,12 +237,16 @@ export async function handleRequest(req, res) {
       return learningStoreResponse(res, () => callLearningStore(`/v1/examples/pending?limit=${limit}`));
     }
 
-    const learningReviewMatch = url.pathname.match(/^\\/v1\\/learning\\/examples\\/(\\d+)\\/review$/);
-    if (req.method === "POST" && learningReviewMatch) {
+    const learningReviewPrefix = "/v1/learning/examples/";
+    const learningReviewSuffix = "/review";
+    const learningReviewId = url.pathname.startsWith(learningReviewPrefix) && url.pathname.endsWith(learningReviewSuffix)
+      ? url.pathname.slice(learningReviewPrefix.length, -learningReviewSuffix.length)
+      : "";
+    if (req.method === "POST" && learningReviewId && Number.isSafeInteger(Number(learningReviewId)) && Number(learningReviewId) > 0) {
       if (!validTrainingToken(req)) return send(res, 401, { error: "invalid_training_token" });
       const body = await readJson(req);
       if (!["approved", "rejected"].includes(body.status)) return send(res, 400, { error: "status_must_be_approved_or_rejected" });
-      return learningStoreResponse(res, () => callLearningStore(`/v1/examples/${learningReviewMatch[1]}/review`, {
+      return learningStoreResponse(res, () => callLearningStore(`/v1/examples/${learningReviewId}/review`, {
         method: "POST",
         body: JSON.stringify({ status: body.status })
       }));
