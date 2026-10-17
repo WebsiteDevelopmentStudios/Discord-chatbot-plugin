@@ -207,16 +207,19 @@ function respond(text, state) {
   }
 
   const related = bestHistoryMatch(clean, state.history);
-  if (/^(why|how|what|when|where|who|which|can|could|would|should|is|are|do|does|did|explain|describe|tell me|and then|what about|how about)\b/i.test(normalized)) {
-    if (related) return { text: `This may connect to what you said earlier: “${related.slice(0, 300)}”. I can use that context, but I don't yet know enough to answer this reliably. Could you add one detail about what you're asking?`, intent: "contextual_question", confidence: 0.52 };
-    return { text: "I want to answer accurately, but I don't have enough built-in knowledge for that question yet. If you give me a little context, or tell me what kind of answer you're looking for, I'll try to help without guessing.", intent: "unknown_question", confidence: 0.3 };
-  }
-  // Word overlap alone does not establish that a message is a follow-up. Only use
-  // history when the user signals continuation; otherwise treat it as a new topic.
+  // Require an actual conversational reference before reusing an earlier topic.
+  // Similar vocabulary by itself is not enough: a repeated or new question may
+  // share words with history without being a follow-up.
   const explicitFollowUp = /^(?:and|also|but|so|then|what about|how about|tell me more|go on|continue|expand on|why is that|how so|what do you mean|can you elaborate|elaborate on)\b/i.test(normalized)
     || /\b(that|those|these|it|they|them|the same|the previous|the above)\b/i.test(normalized);
+  if (/^(why|how|what|when|where|who|which|can|could|would|should|is|are|do|does|did|explain|describe|tell me|and then|what about|how about)\b/i.test(normalized)) {
+    if (explicitFollowUp && related && overlapScore(clean, related) > 0.12) {
+      return { text: `This sounds like a follow-up to what you said earlier: “${related.slice(0, 220)}”. What specific part should I focus on?`, intent: "contextual_question", confidence: 0.58 };
+    }
+    return { text: "I don't have enough built-in information to answer that confidently yet. I can still try to help if you share the relevant context or narrow down what you want to know.", intent: "unknown_question", confidence: 0.3 };
+  }
   if (explicitFollowUp && related && overlapScore(clean, related) > 0.12) {
-    return { text: `I think this may connect to what you said earlier: “${related.slice(0, 180)}”. What specifically would you like to know about it?`, intent: "contextual_chat", confidence: 0.53 };
+    return { text: `This sounds connected to what you said earlier: “${related.slice(0, 180)}”. Which part would you like to continue with?`, intent: "contextual_chat", confidence: 0.53 };
   }
 
   if (/\b(bored|just chatting|talk to me|let's talk|lets talk)\b/i.test(lower)) {
