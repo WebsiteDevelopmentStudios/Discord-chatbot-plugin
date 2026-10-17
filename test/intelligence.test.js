@@ -131,3 +131,21 @@ test("keeps deterministic arithmetic local even when a model is configured", asy
   assert.equal(result.intent, "math");
   assert.match(result.choices[0].message.content, /81/);
 });
+
+test("answers a supported question with a common typo", () => {
+  const result = generateReply({ message: "waht is photosythesis?", conversationId: "typo-photosynthesis" });
+  assert.match(result.choices[0].message.content, /light energy|carbon dioxide/i);
+  assert.equal(result.intent, "built_in_knowledge");
+});
+
+test("understands casual phrasing for a known technical topic", () => {
+  const result = generateReply({ message: "pls explain how do i protect an api key", conversationId: "casual-api-key" });
+  assert.match(result.choices[0].message.content, /credential|secret|authorization/i);
+  assert.equal(result.intent, "built_in_knowledge");
+});
+
+test("calculates arithmetic even when the question contains a common typo", () => {
+  const result = generateReply({ message: "waht is 9 * 9", conversationId: "typo-math" });
+  assert.match(result.choices[0].message.content, /81/);
+  assert.equal(result.intent, "math");
+});
