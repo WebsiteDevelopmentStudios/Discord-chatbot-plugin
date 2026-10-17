@@ -126,12 +126,14 @@ export async function handleRequest(req, res) {
       const message = typeof body.message === "string" ? body.message.trim() : "";
       if (!message) return send(res, 400, { error: "message_required", message: "Send a non-empty 'message' string." });
       if (message.length > 4000) return send(res, 413, { error: "message_too_long", maxLength: 4000 });
-      const conversationId = typeof body.conversationId === "string" && body.conversationId.trim()
+      const clientConversationId = typeof body.conversationId === "string" && body.conversationId.trim()
         ? body.conversationId.trim().slice(0, 160)
-        : record.id;
+        : randomBytes(12).toString("hex");
+      // Scope conversations to their API key so one customer's memory cannot leak to another.
+      const conversationId = `${record.id}:${clientConversationId}`;
       const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
       const completion = generateReply({ message, conversationId, history });
-      return send(res, 200, completion);
+      return send(res, 200, { ...completion, conversationId: clientConversationId });
     }
 
     if (req.method === "POST" && url.pathname === "/v1/chat/reset") {
@@ -142,10 +144,11 @@ export async function handleRequest(req, res) {
       const record = keys.find((entry) => entry.status === "active" && entry.keyHash === hashKey(suppliedKey));
       if (!record) return send(res, 401, { error: "invalid_api_key" });
       const body = await readJson(req);
-      const conversationId = typeof body.conversationId === "string" && body.conversationId.trim()
+      const clientConversationId = typeof body.conversationId === "string" && body.conversationId.trim()
         ? body.conversationId.trim().slice(0, 160)
-        : record.id;
-      return send(res, 200, { reset: resetConversation(conversationId), conversationId });
+        : "";
+      const conversationId = clientConversationId ? `${record.id}:${clientConversationId}` : record.id;
+      return send(res, 200, { reset: resetConversation(conversationId), conversationId: clientConversationId || null });
 
     }
 
