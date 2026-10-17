@@ -97,44 +97,32 @@ test("can retrieve an explanation of AI when asked directly", () => {
   assert.equal(result.intent, "built_in_knowledge");
 });
 
-test("uses a configured model for open-ended questions and reports the selected engine", async () => {
-  let requestedUrl = "";
-  const result = await generateReplyAsync({
-    message: "Compare two approaches to learning a new programming language",
-    conversationId: "hybrid-model-test",
-    providerEnv: {
-      ZOI_MODEL_MODE: "auto",
-      ZOI_MODEL_PROVIDER: "openai-compatible",
-      ZOI_MODEL_BASE_URL: "https://models.example.test/v1",
-      ZOI_MODEL_NAME: "test-model"
-    },
-    fetchImpl: async (url) => {
-      requestedUrl = url;
-      return { ok: true, json: async () => ({ choices: [{ message: { content: "Build small projects, then review the concepts you used." } }] }) };
-    }
-  });
-  assert.equal(requestedUrl, "https://models.example.test/v1/chat/completions");
-  assert.equal(result.engine, "openai-compatible");
-  assert.equal(result.intent, "model_response");
-  assert.equal(result.choices[0].message.content, "Build small projects, then review the concepts you used.");
-  assert.equal(result.confidence, null);
-});
-
-test("keeps deterministic arithmetic local even when a model is configured", async () => {
+test("never calls an external model provider, even if legacy provider settings exist", async () => {
   let called = false;
   const result = await generateReplyAsync({
-    message: "what is 9 * 9",
-    conversationId: "hybrid-math-test",
+    message: "Compare two approaches to learning a new programming language",
+    conversationId: "local-only-engine-test",
     providerEnv: {
       ZOI_MODEL_MODE: "auto",
       ZOI_MODEL_PROVIDER: "openai-compatible",
       ZOI_MODEL_BASE_URL: "https://models.example.test/v1",
-      ZOI_MODEL_NAME: "test-model"
+      ZOI_MODEL_NAME: "test-model",
+      OPENAI_API_KEY: "must-not-be-used"
     },
-    fetchImpl: async () => { called = true; throw new Error("model must not be called for arithmetic"); }
+    fetchImpl: async () => { called = true; throw new Error("external provider must not be called"); }
   });
   assert.equal(called, false);
-  assert.equal(result.engine, "rules");
+  assert.equal(result.engine, "local");
+  assert.equal(result.providerStatus.configured, false);
+  assert.match(result.providerStatus.reason, /disabled/i);
+});
+
+test("keeps deterministic arithmetic local", async () => {
+  const result = await generateReplyAsync({
+    message: "what is 9 * 9",
+    conversationId: "local-math-test"
+  });
+  assert.equal(result.engine, "local");
   assert.equal(result.intent, "math");
   assert.match(result.choices[0].message.content, /81/);
 });
