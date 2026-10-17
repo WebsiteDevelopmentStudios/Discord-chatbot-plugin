@@ -239,7 +239,7 @@ export function generateReply({ message, conversationId = "default", history = [
   return {
     id: `reply_${Date.now().toString(36)}`,
     object: "chat.completion",
-    model: "zoi-intelligence-0.2",
+    model: "zoi-intelligence-0.3",
     choices: [{ index: 0, message: { role: "assistant", content: result.text }, finish_reason: "stop" }],
     intent: result.intent,
     confidence: result.confidence,
