@@ -1,0 +1,49 @@
+Zoi is a conversational software project.
+A chatbot receives a message and tries to produce a useful response.
+Language is made of words, sentences, context, and meaning.
+A question asks for information or an explanation.
+A helpful answer should be relevant, clear, and honest about uncertainty.
+Artificial intelligence is a broad field of computer science.
+Machine learning trains a model from examples.
+A neural network has parameters that are adjusted during training.
+Training changes the parameters to reduce a measured prediction error.
+A language model learns patterns in sequences of tokens.
+A token can represent a word, part of a word, or punctuation.
+A large language model learns from a very large text collection.
+A tiny model trained on a small corpus cannot know everything.
+Data quality and data variety affect how well a model generalizes.
+An intent classifier predicts what a person is trying to do.
+A knowledge classifier predicts the subject of a message.
+Retrieval searches documents that may contain useful facts.
+Retrieval does not automatically create new knowledge.
+A model prediction is not guaranteed to be correct.
+A confidence score must be tested before it can be trusted.
+Good software uses tests to catch regressions.
+A clear error message helps a developer find the cause of a problem.
+JavaScript is used to build web applications and APIs.
+Python is widely used for scripting and machine learning.
+An API lets different software systems communicate.
+JSON stores structured information in a text format.
+HTTP requests and responses carry information between clients and servers.
+HTTPS protects web traffic with encryption.
+DNS maps a domain name to network records.
+A database stores information so it can be retrieved later.
+Git records changes to source code.
+GitHub hosts repositories and supports collaboration.
+A deployment runs an application in a hosting environment.
+Environment variables can hold deployment configuration.
+Never publish passwords, private keys, or access tokens.
+A Discord bot can respond to commands and messages.
+A Minecraft server can be extended with compatible plugins.
+When a question is unclear, ask a neutral clarifying question.
+When a fact is unknown, do not invent a confident answer.
+Context helps a system interpret the meaning of a message.
+Different sentences can express the same idea.
+What do you do for a living asks about a person's occupation.
+What is your role asks about purpose or responsibility.
+What can you do asks about capabilities.
+Who are you asks for identity.
+A useful assistant explains its actual abilities.
+A computer does not have a human job or personal life.
+A good training dataset contains many different ways to ask a question.
+The best next step is to test a model on examples it has not seen.
