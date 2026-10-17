@@ -3,7 +3,8 @@ import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateReply, resetConversation } from "./intelligence.js";
+import { generateReplyAsync, resetConversation } from "./intelligence.js";
+import { getModelStatus } from "./model-provider.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dataFile = resolve(process.env.DATA_FILE || resolve(here, "../data/api-keys.json"));
@@ -88,7 +89,7 @@ export async function handleRequest(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.1.0" });
+      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", model: getModelStatus() });
     }
 
     if (req.method === "POST" && url.pathname === "/v1/keys") {
@@ -142,7 +143,7 @@ export async function handleRequest(req, res) {
       // Scope conversations to their API key so one customer's memory cannot leak to another.
       const conversationId = `${record.id}:${clientConversationId}`;
       const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
-      const completion = generateReply({ message, conversationId, history });
+      const completion = await generateReplyAsync({ message, conversationId, history });
       return send(res, 200, { ...completion, conversationId: clientConversationId });
     }
 
@@ -171,6 +172,6 @@ export async function handleRequest(req, res) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const server = createServer((req, res) => void handleRequest(req, res));
   server.listen(port, "0.0.0.0", () => {
-    console.log(`Intelligence API prototype listening on port ${port}`);
+    console.log(`Zoi Intelligence API listening on port ${port}`);
   });
 }
