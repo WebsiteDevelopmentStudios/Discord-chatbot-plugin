@@ -1,0 +1,44 @@
+{"text":"hello there","label":"greeting"}
+{"text":"hey zoi","label":"greeting"}
+{"text":"good morning","label":"greeting"}
+{"text":"hi how are you","label":"greeting"}
+{"text":"thanks for helping","label":"gratitude"}
+{"text":"thank you so much","label":"gratitude"}
+{"text":"i appreciate that","label":"gratitude"}
+{"text":"cheers that helped","label":"gratitude"}
+{"text":"who are you","label":"identity"}
+{"text":"what are you","label":"identity"}
+{"text":"what do you do for a living","label":"identity"}
+{"text":"what kind of work do you do","label":"identity"}
+{"text":"what is your role","label":"identity"}
+{"text":"are you a human or a bot","label":"identity"}
+{"text":"what can you do","label":"capabilities"}
+{"text":"how can you help me","label":"capabilities"}
+{"text":"what are your abilities","label":"capabilities"}
+{"text":"what are you able to do","label":"capabilities"}
+{"text":"i feel sad today","label":"emotional_support"}
+{"text":"i am stressed out","label":"emotional_support"}
+{"text":"i had a terrible day","label":"emotional_support"}
+{"text":"i feel worried","label":"emotional_support"}
+{"text":"explain what an api is","label":"knowledge_question"}
+{"text":"how does dns work","label":"knowledge_question"}
+{"text":"what is a neural network","label":"knowledge_question"}
+{"text":"explain photosynthesis","label":"knowledge_question"}
+{"text":"why is the sky blue","label":"knowledge_question"}
+{"text":"how do i fix a javascript error","label":"technical_help"}
+{"text":"my code is broken","label":"technical_help"}
+{"text":"help me debug this program","label":"technical_help"}
+{"text":"my server will not start","label":"technical_help"}
+{"text":"what is the weather","label":"current_information"}
+{"text":"who won the game today","label":"current_information"}
+{"text":"latest news about technology","label":"current_information"}
+{"text":"what happened yesterday","label":"current_information"}
+{"text":"gay","label":"ambiguous"}
+{"text":"minecraft","label":"ambiguous"}
+{"text":"photography","label":"ambiguous"}
+{"text":"hello","label":"greeting"}
+{"text":"can you explain machine learning","label":"knowledge_question"}
+{"text":"tell me about gravity","label":"knowledge_question"}
+{"text":"can you help with my code","label":"technical_help"}
+{"text":"i am feeling overwhelmed","label":"emotional_support"}
+{"text":"what is your purpose","label":"capabilities"}
