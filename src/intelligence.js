@@ -144,7 +144,7 @@ function respond(text, state) {
     return { text: [`Hey${name}! What would you like to talk about?`, `Hello${name}! What's on your mind?`, `Hi${name}! How can I help?`][state.turns % 3], intent: "greeting", confidence: 0.96 };
   }
   if (/\b(who are you|what are you|your name|are you (?:an? )?(?:ai|bot|human))\b/i.test(lower)) {
-    return { text: "I'm Zoi Intelligence, an independently built conversational engine. Right now I combine hand-written language rules, basic arithmetic, a small knowledge base, and conversation memory. I don't use a paid external model, and I'm still much more limited than a trained language model.", intent: "identity", confidence: 0.99 };
+    return { text: "I'm Zoi Intelligence, an independently built hybrid conversational engine. I combine deterministic rules, arithmetic, retrieved knowledge, and conversation memory, and can use an optional local or OpenAI-compatible language model when the operator configures one. Without a configured model, I use the lightweight rules-and-retrieval fallback.", intent: "identity", confidence: 0.99 };
   }
   if (/\b(how are you|how's it going|how are things|how have you been)\b/i.test(lower)) {
     return { text: "I'm up and running, ready to help! I don't have feelings or personal experiences, but I can chat and work through questions with you. How are you doing?", intent: "small_talk", confidence: 0.94 };
@@ -240,7 +240,7 @@ export function generateReply({ message, conversationId = "default", history = [
   return {
     id: `reply_${Date.now().toString(36)}`,
     object: "chat.completion",
-    model: "zoi-intelligence-0.3",
+    model: "zoi-intelligence-0.4",
     choices: [{ index: 0, message: { role: "assistant", content: result.text }, finish_reason: "stop" }],
     intent: result.intent,
     confidence: result.confidence,
