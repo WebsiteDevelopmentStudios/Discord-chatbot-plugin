@@ -197,12 +197,6 @@ function respond(text, state) {
   const noted = answerFromNotes(clean, state);
   if (noted && /\b(what|which|remind|remember|tell me)\b/i.test(lower)) return { text: `You asked me to remember: “${noted}”.`, intent: "memory_recall", confidence: 0.83 };
 
-  // Handle simple recommendation requests before retrieval/history matching. A repeated
-  // request is still a new request; similarity to an earlier message is not proof of continuation.
-  if (/\\b(cat|kitten|kitty)\\b/i.test(lower) && /\\b(name|names|named|call|suggest|suggestions|ideas)\\b/i.test(lower) && /\\b(need|want|looking for|suggest|give|help|new|what|any|some|ideas|name)\\b/i.test(lower)) {
-    return { text: "Absolutely! Here are some cat name ideas: Luna, Mochi, Milo, Pepper, Nala, Oliver, Bean, Willow, Pixel, and Socks. If you tell me your cat’s color, personality, or whether you want a cute, funny, or unusual name, I can narrow the list down.", intent: "recommendation", confidence: 0.94 };
-  }
-
   const known = knowledgeAnswer(clean);
   if (known) {
     return { text: known, intent: "built_in_knowledge", confidence: 0.79 };
@@ -217,9 +211,14 @@ function respond(text, state) {
     if (related) return { text: `This may connect to what you said earlier: “${related.slice(0, 300)}”. I can use that context, but I don't yet know enough to answer this reliably. Could you add one detail about what you're asking?`, intent: "contextual_question", confidence: 0.52 };
     return { text: "I want to answer accurately, but I don't have enough built-in knowledge for that question yet. If you give me a little context, or tell me what kind of answer you're looking for, I'll try to help without guessing.", intent: "unknown_question", confidence: 0.3 };
   }
-  if (related && overlapScore(clean, related) > 0.3) {
-    return { text: `I think you're continuing the topic “${related.slice(0, 180)}”. What part would you like to explore next?`, intent: "contextual_chat", confidence: 0.53 };
+  // Word overlap alone does not establish that a message is a follow-up. Only use
+  // history when the user signals continuation; otherwise treat it as a new topic.
+  const explicitFollowUp = /^(?:and|also|but|so|then|what about|how about|tell me more|go on|continue|expand on|why is that|how so|what do you mean|can you elaborate|elaborate on)\b/i.test(normalized)
+    || /\b(that|those|these|it|they|them|the same|the previous|the above)\b/i.test(normalized);
+  if (explicitFollowUp && related && overlapScore(clean, related) > 0.12) {
+    return { text: \`I think this may connect to what you said earlier: “\${related.slice(0, 180)}”. What specifically would you like to know about it?\`, intent: "contextual_chat", confidence: 0.53 };
   }
+
   if (/\b(bored|just chatting|talk to me|let's talk|lets talk)\b/i.test(lower)) {
     return { text: "Sure, we can just chat. What's something you've been interested in lately, or would you rather hear a random question?", intent: "small_talk", confidence: 0.72 };
   }
