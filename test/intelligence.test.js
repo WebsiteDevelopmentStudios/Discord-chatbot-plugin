@@ -132,6 +132,17 @@ test("keeps deterministic arithmetic local even when a model is configured", asy
   assert.match(result.choices[0].message.content, /81/);
 });
 
+test("answers a repeated cat-name request instead of treating it as topic continuation", () => {
+  const id = "cat-name-repeat";
+  const first = generateReply({ message: "well i need a new cat anme - me", conversationId: id });
+  const second = generateReply({ message: "i need a new cat name - me", conversationId: id });
+  assert.equal(first.intent, "recommendation");
+  assert.equal(second.intent, "recommendation");
+  assert.match(second.choices[0].message.content, /Luna|Mochi|Milo/i);
+  assert.doesNotMatch(second.choices[0].message.content, /continuing the topic/i);
+  resetConversation(id);
+});
+
 test("answers a supported question with a common typo", () => {
   const result = generateReply({ message: "waht is photosythesis?", conversationId: "typo-photosynthesis" });
   assert.match(result.choices[0].message.content, /light energy|carbon dioxide/i);
