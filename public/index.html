@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Zoi Intelligence — API Playground</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#edf2ff;background:#090c14;font-synthesis:none;--muted:#9ba7bd;--line:#252c3c;--panel:#111725;--accent:#9b8cff;--cyan:#75e0d0;--danger:#ff8b9a}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% -10%,#28204d 0,transparent 42%),radial-gradient(ellipse at 100% 15%,#102e3b 0,transparent 35%),#090c14}button,input,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:11px;padding:11px 15px;background:var(--accent);color:#100d20;font-weight:750}button:disabled{opacity:.5;cursor:wait}.secondary{background:#20283a;color:#edf2ff;border:1px solid #343d52}.subtle{background:transparent;color:var(--muted);border:1px solid var(--line)}input,textarea{width:100%;background:#0b101b;color:#f4f6ff;border:1px solid #30394c;border-radius:11px;padding:12px;outline:none}input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px #9b8cff20}textarea{resize:vertical;min-height:85px}a{color:var(--cyan);text-decoration:none}.wrap{max-width:1180px;margin:auto;padding:30px 20px 60px}.top{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:32px}.brand{display:flex;align-items:center;gap:13px}.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#a99aff,#70e2d2);color:#101323;font-size:22px;font-weight:900}.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:800}.brand h1{font-size:20px;margin:3px 0 0}.status{border:1px solid var(--line);border-radius:999px;padding:8px 12px;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px}.dot{width:8px;height:8px;border-radius:50%;background:#e7b85a;box-shadow:0 0 12px #e7b85a66}.hero{margin-bottom:24px}.hero h2{font-size:clamp(30px,5vw,49px);line-height:1.08;letter-spacing:-.045em;margin:0 0 13px;max-width:750px}.gradient{background:linear-gradient(90deg,#b6a9ff,#73e4d1);background-clip:text;-webkit-background-clip:text;color:transparent}.hero p{color:var(--muted);max-width:690px;line-height:1.7;margin:0}.layout{display:grid;grid-template-columns:350px minmax(0,1fr);gap:18px;align-items:start}.stack{display:grid;gap:18px}.panel{background:linear-gradient(150deg,#141b2aee,#101521f5);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 16px 55px #00000017}.panel-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:16px}.panel h3{margin:0;font-size:15px}.step{font-size:11px;color:var(--cyan);border:1px solid #75e0d033;background:#75e0d00d;border-radius:7px;padding:4px 7px}.hint{color:var(--muted);font-size:12px;line-height:1.55;margin:9px 0 0}.field{display:grid;gap:8px;margin-bottom:14px}.field label{font-size:12px;color:#c7d0e2;font-weight:650}.row{display:flex;gap:9px;align-items:center}.row>*{min-width:0}.row button{white-space:nowrap}.actions{display:flex;gap:9px;flex-wrap:wrap}.key-status{font-size:12px;margin-top:12px;color:var(--muted);min-height:18px}.key-status.good{color:var(--cyan)}.key-status.bad{color:var(--danger)}.key-input-wrap{position:relative}.key-input-wrap input{padding-right:42px}.eye{position:absolute;right:6px;top:6px;padding:7px;background:transparent;color:var(--muted)}.chat-panel{min-height:550px;display:flex;flex-direction:column}.chat-head-copy p{margin:5px 0 0;color:var(--muted);font-size:12px}.chat-tools{display:flex;gap:7px;align-items:center}.chat-log{flex:1;min-height:320px;max-height:490px;overflow:auto;padding:10px 2px 18px;display:flex;flex-direction:column;gap:14px}.welcome{margin:auto;text-align:center;max-width:330px;color:var(--muted);line-height:1.6;font-size:13px}.welcome .spark{font-size:32px;margin-bottom:10px}.bubble{max-width:88%;border:1px solid var(--line);border-radius:15px;padding:12px 14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;font-size:13px}.bubble.user{align-self:flex-end;background:#272342;border-color:#51477e}.bubble.assistant{align-self:flex-start;background:#171f2e}.bubble.error{align-self:flex-start;border-color:#6a3442;color:#ffc0c8;background:#27151d}.bubble .meta{font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em}.composer{border-top:1px solid var(--line);padding-top:16px}.composer textarea{min-height:75px}.composer-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px}.composer-bottom .hint{margin:0}.details{margin-top:18px}.details summary{cursor:pointer;color:var(--muted);font-size:12px}.json{font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#090e17;border:1px solid var(--line);padding:12px;border-radius:10px;max-height:220px;overflow:auto;color:#c4d2eb}.footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#77839a;font-size:11px;margin-top:22px}.pill{font-size:10px;color:#c9c0ff;background:#9b8cff15;border:1px solid #9b8cff33;padding:5px 8px;border-radius:7px} @media(max-width:850px){.layout{grid-template-columns:1fr}.chat-panel{min-height:520px}.chat-log{max-height:none}.top{align-items:flex-start}.wrap{padding:20px 14px 40px}}@media(max-width:480px){.top{flex-direction:column}.row{align-items:stretch;flex-direction:column}.row button{width:100%}.panel{padding:16px}.chat-tools{flex-wrap:wrap}.composer-bottom{align-items:stretch;flex-direction:column}.composer-bottom button{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand"><div class="logo">Z</div><div><div class="eyebrow">Developer playground</div><h1>Zoi Intelligence API</h1></div></div>
+  <div class="status"><span class="dot" id="healthDot"></span><span id="healthText">Checking API…</span></div>
+</header>
+<section class="hero"><h2>Meet your API.<br><span class="gradient">Test the intelligence.</span></h2><p>Generate a key, validate it, and talk to the self-developed conversational engine. No third-party model key required. This is an early rule-based prototype, so some answers will be limited.</p></section>
+<div class="layout">
+  <aside class="stack">
+    <section class="panel">
+      <div class="panel-head"><h3>API access</h3><span class="step">01 / KEY</span></div>
+      <div class="field"><label for="label">Key label</label><input id="label" maxlength="80" value="My playground" placeholder="My application"></div>
+      <button id="createKey" style="width:100%">Generate API key</button>
+      <p class="hint">Your new key is shown only once by the API. Copy it somewhere safe before leaving this page.</p>
+      <div class="field" style="margin-top:17px"><label for="apiKey">API key</label><div class="key-input-wrap"><input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="zai_…"><button class="eye" id="toggleKey" aria-label="Show or hide API key" title="Show or hide key">◉</button></div></div>
+      <div class="actions"><button class="secondary" id="validateKey">Validate key</button><button class="subtle" id="clearKey">Clear</button></div>
+      <div class="key-status" id="keyStatus" role="status">Key stays in this page's memory only; it is not saved to local storage.</div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h3>Conversation settings</h3><span class="step">02 / MEMORY</span></div>
+      <div class="field"><label for="conversationId">Conversation ID</label><input id="conversationId" spellcheck="false" placeholder="Generated when you send a message"></div>
+      <div class="actions"><button class="secondary" id="newConversation">New conversation</button><button class="subtle" id="resetConversation">Reset memory</button></div>
+      <p class="hint">Reuse the same ID to test memory across messages. Reset clears the engine's memory for that conversation.</p>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h3>Quick checks</h3><span class="step">03 / TESTS</span></div>
+      <div class="actions"><button class="secondary" id="runHealth">Check health</button><button class="secondary" id="runKeyTest">Test key</button></div>
+      <p class="hint">Responses and errors appear in the response inspector below the chat.</p>
+    </section>
+  </aside>
+  <main class="panel chat-panel">
+    <div class="panel-head"><div class="chat-head-copy"><h3>Chat playground</h3><p>Send a message to the live API</p></div><div class="chat-tools"><span class="pill" id="modelPill">zoi-intelligence-0.1</span><button class="subtle" id="clearChat">Clear chat</button></div></div>
+    <div class="chat-log" id="chatLog" aria-live="polite"><div class="welcome"><div class="spark">✳</div><strong style="color:#edf2ff">Ready when you are.</strong><br>Generate or enter an API key, then try “Hi”, “What is 12 × 8?”, or “My name is Alex”.</div></div>
+    <form class="composer" id="chatForm"><textarea id="message" maxlength="4000" placeholder="Message your AI… (Enter to send, Shift+Enter for a new line)" required></textarea><div class="composer-bottom"><p class="hint">Maximum 4,000 characters · API calls use your key</p><button id="sendMessage" type="submit">Send message ↗</button></div></form>
+    <div class="details"><details><summary>Response inspector · raw JSON</summary><pre class="json" id="responseJson">No API response yet.</pre></details></div>
+  </main>
+</div>
+<footer class="footer"><span>Independent, model-free prototype · No paid model API used</span><span><a href="/health" target="_blank" rel="noreferrer">Health endpoint</a> · <a href="https://github.com/WebsiteDevelopmentStudios/Discord-chatbot-plugin" target="_blank" rel="noreferrer">Source code</a></span></footer>
+</div>
+<script>
+(() => {
+ const $ = (id) => document.getElementById(id);
+ const apiBase = window.location.origin;
+ let busy = false;
+ const setKeyStatus = (text, kind = "") => { $("keyStatus").textContent = text; $("keyStatus").className = "key-status " + kind; };
+ const setInspector = (data) => { $("responseJson").textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2); };
+ async function request(path, options = {}) {
+   const response = await fetch(apiBase + path, { ...options, headers: { ...(options.body ? {"Content-Type":"application/json"} : {}), ...(options.key ? {Authorization:"Bearer " + options.key} : {}), ...(options.headers || {}) } });
+   const raw = await response.text();
+   let data; try { data = raw ? JSON.parse(raw) : {}; } catch { data = {raw}; }
+   if (!response.ok) { const error = new Error(data.message || data.error || ("HTTP " + response.status)); error.status = response.status; error.data = data; throw error; }
+   return data;
+ }
+ async function checkHealth() {
+   try { const data = await request("/health"); $("healthDot").style.background = "#75e0d0"; $("healthDot").style.boxShadow = "0 0 12px #75e0d066"; $("healthText").textContent = "API online · v" + data.version; setInspector(data); return data; }
+   catch (error) { $("healthDot").style.background = "#ff8b9a"; $("healthText").textContent = "API unavailable"; setInspector(error.data || {error:error.message}); throw error; }
+ }
+ async function validateKey(showErrors = true) {
+   const key = $("apiKey").value.trim();
+   if (!key) { setKeyStatus("Enter an API key first.", "bad"); return false; }
+   try { const data = await request("/v1/keys", {key}); setKeyStatus("✓ Valid key · " + (data.label || "API key"), "good"); setInspector(data); return true; }
+   catch (error) { setKeyStatus(error.status === 401 ? "✕ Invalid key. Generate a new one or check for typos." : "Validation failed: " + error.message, "bad"); setInspector(error.data || {error:error.message}); if (showErrors) return false; throw error; }
+ }
+ function addBubble(role, content, meta = "") {
+   const log = $("chatLog"); const welcome = log.querySelector(".welcome"); if (welcome) welcome.remove();
+   const bubble = document.createElement("div"); bubble.className = "bubble " + role;
+   const label = document.createElement("div"); label.className = "meta"; label.textContent = meta || (role === "user" ? "You" : role === "error" ? "Request error" : "Zoi Intelligence");
+   const text = document.createElement("div"); text.textContent = content;
+   bubble.append(label, text); log.appendChild(bubble); log.scrollTop = log.scrollHeight; return bubble;
+ }
+ function setBusy(value) { busy = value; $("sendMessage").disabled = value; $("createKey").disabled = value; $("sendMessage").textContent = value ? "Working…" : "Send message ↗"; }
+ $("createKey").addEventListener("click", async () => {
+   setBusy(true);
+   try {
+     const data = await request("/v1/keys", {method:"POST", body:JSON.stringify({label:$("label").value.trim() || "My playground"})});
+     $("apiKey").value = data.key; $("apiKey").type = "text"; setKeyStatus("✓ Key created. Copy it now; it will not be shown again by the API.", "good"); setInspector(data);
+   } catch(error) { setKeyStatus("Could not create key: " + error.message, "bad"); setInspector(error.data || {error:error.message}); }
+   finally { setBusy(false); }
+ });
+ $("validateKey").addEventListener("click", () => validateKey());
+ $("toggleKey").addEventListener("click", () => { $("apiKey").type = $("apiKey").type === "password" ? "text" : "password"; });
+ $("clearKey").addEventListener("click", () => { $("apiKey").value = ""; setKeyStatus("API key cleared from this page.", ""); });
+ $("runHealth").addEventListener("click", async () => { try { await checkHealth(); } catch {} });
+ $("runKeyTest").addEventListener("click", async () => { await validateKey(); });
+ $("newConversation").addEventListener("click", () => { $("conversationId").value = ""; $("chatLog").replaceChildren(); const welcome = document.createElement("div"); welcome.className = "welcome"; welcome.textContent = "New conversation ready. Send a message to start."; $("chatLog").appendChild(welcome); setInspector("New conversation. An ID will be assigned by the API after your next message."); });
+ $("clearChat").addEventListener("click", () => { $("chatLog").replaceChildren(); const welcome = document.createElement("div"); welcome.className = "welcome"; welcome.textContent = "Chat cleared from view. The conversation memory has not been reset."; $("chatLog").appendChild(welcome); });
+ $("resetConversation").addEventListener("click", async () => {
+   const key = $("apiKey").value.trim(); if (!key) { setKeyStatus("Enter an API key first.", "bad"); return; }
+   try { const data = await request("/v1/chat/reset", {method:"POST",key,body:JSON.stringify({conversationId:$("conversationId").value.trim()})}); setInspector(data); addBubble("assistant", data.reset ? "Conversation memory reset." : "No stored memory was found for this conversation.", "System"); }
+   catch(error) { setInspector(error.data || {error:error.message}); addBubble("error", error.message); }
+ });
+ $("chatForm").addEventListener("submit", async (event) => {
+   event.preventDefault(); if (busy) return;
+   const key = $("apiKey").value.trim(), message = $("message").value.trim();
+   if (!key) { setKeyStatus("Generate or enter an API key before chatting.", "bad"); return; }
+   if (!message) return;
+   $("message").value = ""; addBubble("user", message); setBusy(true);
+   try {
+     const body = {message}; if ($("conversationId").value.trim()) body.conversationId = $("conversationId").value.trim();
+     const data = await request("/v1/chat/completions", {method:"POST",key,body:JSON.stringify(body)});
+     if (data.conversationId) $("conversationId").value = data.conversationId;
+     const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : JSON.stringify(data);
+     addBubble("assistant", reply, data.model || "Zoi Intelligence");
+     $("modelPill").textContent = data.model || "API response";
+     setInspector(data);
+   } catch(error) { addBubble("error", error.message); setInspector(error.data || {error:error.message,status:error.status || null}); }
+   finally { setBusy(false); $("message").focus(); }
+ });
+ $("message").addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("chatForm").requestSubmit(); } });
+ checkHealth().catch(() => {});
+})();
+</script>
+</body>
+</html>
