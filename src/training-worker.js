@@ -18,7 +18,7 @@ function softmax(logits) {
   const max=Math.max(...logits), ex=logits.map(v=>Math.exp(Math.max(-30,v-max))), sum=ex.reduce((a,b)=>a+b,0);
   return ex.map(v=>v/sum);
 }
-function trainMlp({name, examples, textField="text", labelField="label", epochs=70, seed=42, progressStart=0, progressEnd=0}) {
+function trainMlp({name, examples, textField="text", labelField="label", epochs=70, hiddenUnits=48, seed=42, progressStart=0, progressEnd=0}) {
   const clean=examples.filter(r=>typeof r[textField]==="string" && r[textField].trim() && typeof r[labelField]==="string");
   const vocab=[...new Set(clean.flatMap(r=>tokenize(r[textField]).filter(t=>!STOP.has(t))))].sort();
   const labels=[...new Set(clean.map(r=>r[labelField]))].sort();
@@ -26,7 +26,7 @@ function trainMlp({name, examples, textField="text", labelField="label", epochs=
   const vi=new Map(vocab.map((t,i)=>[t,i])), li=new Map(labels.map((t,i)=>[t,i]));
   const vectors=clean.map(r=>{const x=new Float32Array(vocab.length);for(const t of tokenize(r[textField])){const i=vi.get(t);if(i!==undefined)x[i]+=1;}let norm=Math.sqrt(x.reduce((s,v)=>s+v*v,0));if(norm)for(let i=0;i<x.length;i++)x[i]/=norm;return x;});
   const ys=clean.map(r=>li.get(r[labelField]));
-  const rand=seededRandom(seed), hidden=Math.min(24,Math.max(8,Math.floor(vocab.length/2)));
+  const rand=seededRandom(seed), hidden=Math.max(8,Math.min(96,Math.floor(hiddenUnits)));
   const w1=Array.from({length:vocab.length},()=>Array.from({length:hidden},()=>((rand()-.5)*.18)));
   const b1=Array(hidden).fill(0), w2=Array.from({length:hidden},()=>Array.from({length:labels.length},()=>((rand()-.5)*.18))), b2=Array(labels.length).fill(0);
   const lr=.045; let finalLoss=0;
@@ -68,16 +68,16 @@ async function main(){
  const topicRows=loadJsonl(await readFile(resolve(dataDir,"knowledge/data/training.jsonl"),"utf8"));
  const corpus=(await readFile(resolve(dataDir,"language/data/corpus.txt"),"utf8")).split(/\r?\n/).filter(s=>s.trim());
  report(5,"intent","Training the intent neural network…");
- const intent=trainMlp({name:"Intent model",examples:intentRows,epochs:100,seed:11,progressStart:5,progressEnd:32});
+ const intent=trainMlp({name:"Intent model",examples:intentRows,epochs:220,hiddenUnits:48,seed:11,progressStart:5,progressEnd:32});
  report(35,"knowledge","Training the knowledge-topic neural network…");
- const knowledge=trainMlp({name:"Knowledge model",examples:topicRows,epochs:110,seed:23,progressStart:35,progressEnd:63});
+ const knowledge=trainMlp({name:"Knowledge model",examples:topicRows,epochs:260,hiddenUnits:64,seed:23,progressStart:35,progressEnd:63});
  report(66,"language","Preparing next-token training examples…");
  const sentences=corpus.map(tokenize).filter(t=>t.length>2);
  const counts=new Map();for(const s of sentences)for(const t of s)counts.set(t,(counts.get(t)||0)+1);
- const vocab=[...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,100).map(x=>x[0]);
+ const vocab=[...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,150).map(x=>x[0]);
  const allowed=new Set(vocab), pairs=[];
  for(const s of sentences){const seq=s.filter(t=>allowed.has(t));for(let i=1;i<seq.length;i++)pairs.push({text:seq[i-1],label:seq[i]});}
- const language=trainMlp({name:"Language next-token model",examples:pairs,textField:"text",labelField:"label",epochs:50,seed:37,progressStart:68,progressEnd:96});
+ const language=trainMlp({name:"Language next-token model",examples:pairs,textField:"text",labelField:"label",epochs:140,hiddenUnits:48,seed:37,progressStart:68,progressEnd:96});
  await mkdir(artifactDir,{recursive:true});
  for(const [file,result] of [["intent",intent],["knowledge",knowledge],["language",language]]) {
    await writeFile(resolve(artifactDir,file+".json"),JSON.stringify(result.artifact),{encoding:"utf8",mode:0o600});
