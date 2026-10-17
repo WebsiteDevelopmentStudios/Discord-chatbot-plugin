@@ -62,3 +62,30 @@ test("can reset conversation state", () => {
   const result = generateReply({ message: "what is my name?", conversationId: id });
   assert.match(result.choices[0].message.content, /haven't told|don't know/i);
 });
+
+test("retrieves relevant built-in knowledge across more topics", () => {
+  const cases = [
+    ["How does DNS work?", /domain names|DNS/i],
+    ["What is a merge conflict?", /Git merge conflict|conflict/i],
+    ["How do I protect an API key?", /credential|secret|key/i],
+    ["What is a large language model?", /LLM|language model|neural network/i],
+    ["What does HTTP 401 mean?", /401|authentication/i],
+    ["What is photosynthesis?", /light energy|carbon dioxide/i]
+  ];
+  for (const [message, expected] of cases) {
+    const result = generateReply({ message, conversationId: `retrieval-${message}` });
+    assert.match(result.choices[0].message.content, expected, message);
+    assert.equal(result.intent, "built_in_knowledge", message);
+  }
+});
+
+test("does not confuse the letters AI inside unrelated words with artificial intelligence", () => {
+  const result = generateReply({ message: "What is said in this sentence?", conversationId: "ai-boundary-test" });
+  assert.doesNotMatch(result.choices[0].message.content, /Artificial intelligence is a broad field/i);
+});
+
+test("can retrieve an explanation of AI when asked directly", () => {
+  const result = generateReply({ message: "What is AI?", conversationId: "ai-direct-test" });
+  assert.match(result.choices[0].message.content, /Artificial intelligence/i);
+  assert.equal(result.intent, "built_in_knowledge");
+});
