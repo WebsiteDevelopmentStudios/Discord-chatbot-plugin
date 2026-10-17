@@ -45,7 +45,7 @@ const DOCUMENTS = [
 
 const STOP = new Set(["the","and","for","that","this","with","what","when","where","which","who","why","how","are","is","was","were","does","did","can","could","would","should","tell","explain","about","into","from","have","has","your","you","its","their","them","than","then","please","help","define","mean","means"]);
 function tokens(value) {
-  return String(value).toLowerCase().match(/[\\p{L}\\p{N}]+/gu) || [];
+  return String(value).toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
 }
 function queryTerms(value) {
   return new Set(tokens(value).filter((term) => term.length > 2 && !STOP.has(term) || (term.length === 2 && !STOP.has(term))));
@@ -63,8 +63,8 @@ function scoreDocument(query, document) {
   const coverage = hits / q.size;
   const density = hits / Math.max(1, Math.sqrt(allTerms.size));
   const alias = document.terms.some((term) => {
-    const normalized = term.replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
-    return normalized.length >= 2 && (" " + query.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim() + " ").includes(" " + normalized + " ");
+    const normalized = term.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    return normalized.length >= 2 && (" " + query.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ").includes(" " + normalized + " ");
   });
   return coverage * 0.72 + titleHits * 0.16 + density * 0.12 + (alias ? 0.45 : 0);
 }
