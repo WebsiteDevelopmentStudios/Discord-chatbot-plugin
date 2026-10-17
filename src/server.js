@@ -97,6 +97,44 @@ async function readJson(req) {
   }
 }
 
+async function callLearningStore(path, options = {}) {
+  const base = (process.env.ZOI_LEARNING_URL || "").replace(/\/$/, "");
+  const token = process.env.ZOI_LEARNING_TOKEN || "";
+  if (!base || !token) {
+    const error = new Error("Learning storage is not configured.");
+    error.code = "LEARNING_NOT_CONFIGURED";
+    throw error;
+  }
+  const response = await fetch(`${base}${path}`, {
+    ...options,
+    headers: {
+      authorization: `Bearer ${token}`,
+      ...(options.body ? { "content-type": "application/json" } : {}),
+      ...(options.headers || {})
+    },
+    signal: AbortSignal.timeout(2500)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.message || data.error || "Learning storage request failed.");
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+async function learningStoreResponse(res, operation) {
+  try {
+    return send(res, 200, await operation());
+  } catch (error) {
+    const status = error.code === "LEARNING_NOT_CONFIGURED" ? 503 : (error.status === 401 ? 502 : 503);
+    return send(res, status, {
+      error: status === 503 ? "learning_store_unavailable" : "learning_store_error",
+      message: status === 503 ? "Zoi's learning store is temporarily unavailable." : "Zoi could not complete the learning-store request."
+    });
+  }
+}
+
 function allowKeyCreation(req) {
   const forwarded = req.headers["x-forwarded-for"];
   const ip = (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") || req.socket.remoteAddress || "unknown";
@@ -172,6 +210,44 @@ export async function handleRequest(req, res) {
       return send(res, 200, { valid: true, keyId: record.id, label: record.label, createdAt: record.createdAt });
     }
 
+    if (req.method === "POST" && url.pathname === "/v1/learning/feedback") {
+      const auth = req.headers.authorization || "";
+      const suppliedKey = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (!suppliedKey) return send(res, 401, { error: "missing_api_key" });
+      const keys = await loadKeys();
+      const record = keys.find((entry) => entry.status === "active" && entry.keyHash === hashKey(suppliedKey));
+      if (!record) return send(res, 401, { error: "invalid_api_key" });
+      const body = await readJson(req);
+      const question = typeof body.question === "string" ? body.question.trim() : "";
+      const correction = typeof body.correction === "string" ? body.correction.trim() : "";
+      const originalAnswer = typeof body.originalAnswer === "string" ? body.originalAnswer.trim() : "";
+      if (!question || !correction) return send(res, 400, { error: "question_and_correction_required" });
+      if (question.length > 2000 || correction.length > 4000 || originalAnswer.length > 4000) {
+        return send(res, 413, { error: "learning_example_too_long" });
+      }
+      return learningStoreResponse(res, () => callLearningStore("/v1/feedback", {
+        method: "POST",
+        body: JSON.stringify({ question, originalAnswer, correction, source: record.id })
+      }));
+    }
+
+    if (req.method === "GET" && url.pathname === "/v1/learning/pending") {
+      if (!validTrainingToken(req)) return send(res, 401, { error: "invalid_training_token" });
+      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") || 50)));
+      return learningStoreResponse(res, () => callLearningStore(`/v1/examples/pending?limit=${limit}`));
+    }
+
+    const learningReviewMatch = url.pathname.match(/^\\/v1\\/learning\\/examples\\/(\\d+)\\/review$/);
+    if (req.method === "POST" && learningReviewMatch) {
+      if (!validTrainingToken(req)) return send(res, 401, { error: "invalid_training_token" });
+      const body = await readJson(req);
+      if (!["approved", "rejected"].includes(body.status)) return send(res, 400, { error: "status_must_be_approved_or_rejected" });
+      return learningStoreResponse(res, () => callLearningStore(`/v1/examples/${learningReviewMatch[1]}/review`, {
+        method: "POST",
+        body: JSON.stringify({ status: body.status })
+      }));
+    }
+
     if (req.method === "POST" && url.pathname === "/v1/chat/completions") {
       const auth = req.headers.authorization || "";
       const suppliedKey = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
@@ -190,6 +266,20 @@ export async function handleRequest(req, res) {
       const conversationId = `${record.id}:${clientConversationId}`;
       const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
       const completion = await generateReplyAsync({ message, conversationId, history });
+      if (body.learnFromConversation === true && completion.intent === "unknown_question") {
+        try {
+          await callLearningStore("/v1/candidates", {
+            method: "POST",
+            body: JSON.stringify({
+              question: message,
+              originalAnswer: completion.choices?.[0]?.message?.content || "",
+              source: record.id
+            })
+          });
+        } catch {
+          // Learning capture is best-effort; it must never break chat responses.
+        }
+      }
       return send(res, 200, { ...completion, conversationId: clientConversationId });
     }
 
