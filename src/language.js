@@ -1,7 +1,7 @@
 // Lightweight language normalization for the no-model fallback.
 // This is typo tolerance and synonym expansion, not a trained language model.
 const COMMON_CORRECTIONS = new Map(Object.entries({
-  teh: "the", waht: "what", whta: "what", wat: "what", wht: "what",
+  teh: "the", waht: "what", wahts: "what is", whta: "what", wat: "what", wht: "what",
   hwo: "how", hw: "how", wher: "where", wen: "when", wich: "which",
   becuase: "because", becasue: "because", recieve: "receive", recieveing: "receiving",
   seperate: "separate", definately: "definitely", occurrance: "occurrence",
