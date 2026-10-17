@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateReply, resetConversation } from "../src/intelligence.js";
+import { generateReply, generateReplyAsync, resetConversation } from "../src/intelligence.js";
 
 test("answers greetings without an external model", () => {
   const result = generateReply({ message: "hello", conversationId: "greeting-test" });
@@ -88,4 +88,46 @@ test("can retrieve an explanation of AI when asked directly", () => {
   const result = generateReply({ message: "What is AI?", conversationId: "ai-direct-test" });
   assert.match(result.choices[0].message.content, /Artificial intelligence/i);
   assert.equal(result.intent, "built_in_knowledge");
+});
+
+test("uses a configured model for open-ended questions and reports the selected engine", async () => {
+  let requestedUrl = "";
+  const result = await generateReplyAsync({
+    message: "Compare two approaches to learning a new programming language",
+    conversationId: "hybrid-model-test",
+    providerEnv: {
+      ZOI_MODEL_MODE: "auto",
+      ZOI_MODEL_PROVIDER: "openai-compatible",
+      ZOI_MODEL_BASE_URL: "https://models.example.test/v1",
+      ZOI_MODEL_NAME: "test-model"
+    },
+    fetchImpl: async (url) => {
+      requestedUrl = url;
+      return { ok: true, json: async () => ({ choices: [{ message: { content: "Build small projects, then review the concepts you used." } }] }) };
+    }
+  });
+  assert.equal(requestedUrl, "https://models.example.test/v1/chat/completions");
+  assert.equal(result.engine, "openai-compatible");
+  assert.equal(result.intent, "model_response");
+  assert.equal(result.choices[0].message.content, "Build small projects, then review the concepts you used.");
+  assert.equal(result.confidence, null);
+});
+
+test("keeps deterministic arithmetic local even when a model is configured", async () => {
+  let called = false;
+  const result = await generateReplyAsync({
+    message: "what is 9 * 9",
+    conversationId: "hybrid-math-test",
+    providerEnv: {
+      ZOI_MODEL_MODE: "auto",
+      ZOI_MODEL_PROVIDER: "openai-compatible",
+      ZOI_MODEL_BASE_URL: "https://models.example.test/v1",
+      ZOI_MODEL_NAME: "test-model"
+    },
+    fetchImpl: async () => { called = true; throw new Error("model must not be called for arithmetic"); }
+  });
+  assert.equal(called, false);
+  assert.equal(result.engine, "rules");
+  assert.equal(result.intent, "math");
+  assert.match(result.choices[0].message.content, /81/);
 });
