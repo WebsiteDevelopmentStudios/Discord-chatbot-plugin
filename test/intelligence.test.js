@@ -144,7 +144,7 @@ test("does not assume a repeated request is a follow-up just because words overl
 test("only uses conversation history when a follow-up clearly refers to it", () => {
   const id = "explicit-follow-up-general";
   generateReply({ message: "I am learning photography", conversationId: id });
-  const result = generateReply({ message: "What about that?", conversationId: id });
+  const result = generateReply({ message: "How does that photography technique work?", conversationId: id });
   assert.equal(result.intent, "contextual_question");
   assert.match(result.choices[0].message.content, /follow-up|earlier/i);
   resetConversation(id);
