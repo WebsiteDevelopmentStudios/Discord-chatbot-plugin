@@ -1,5 +1,4 @@
 import { retrieveKnowledge } from "./knowledge.js";
-import { completeWithModel, getModelStatus } from "./model-provider.js";
 import { normalizeForUnderstanding } from "./language.js";
 
 const conversations = new Map();
@@ -266,37 +265,19 @@ export function generateReply({ message, conversationId = "default", history = [
     conversationId: id
   };
 }
-const RULE_ONLY_INTENTS = new Set([
-  "math", "memory_store", "memory_recall", "history_recall", "identity", "capabilities"
-]);
-
-export async function generateReplyAsync({ message, conversationId = "default", history = [], providerEnv = process.env, fetchImpl = fetch }) {
-  const fallback = generateReply({ message, conversationId, history });
-  const intent = fallback.intent;
-  const status = getModelStatus(providerEnv);
-  if (!status.configured || RULE_ONLY_INTENTS.has(intent)) {
-    return { ...fallback, engine: "rules", providerStatus: status };
-  }
-
-  const id = String(conversationId).slice(0, 160);
-  const state = conversations.get(id);
-  const previousHistory = state ? state.history.slice(0, -2) : [];
-  const knowledge = knowledgeAnswer(String(message));
-  const answer = await completeWithModel({ message, history: previousHistory, knowledge, env: providerEnv, fetchImpl });
-  if (!answer) return { ...fallback, engine: "rules", providerStatus: status };
-
-  if (state) {
-    const last = state.history.at(-1);
-    if (last?.role === "assistant") last.content = answer;
-  }
+// Zoi runs entirely on its own local code and bundled knowledge. Deliberately
+// do not call hosted or OpenAI-compatible model providers, even if old provider
+// environment variables remain configured on the host.
+export async function generateReplyAsync({ message, conversationId = "default", history = [] }) {
+  const reply = generateReply({ message, conversationId, history });
   return {
-    ...fallback,
-    model: status.model || "zoi-intelligence-0.4",
-    choices: [{ index: 0, message: { role: "assistant", content: answer }, finish_reason: "stop" }],
-    intent: "model_response",
-    confidence: null,
-    engine: status.provider,
-    providerStatus: status
+    ...reply,
+    engine: "local",
+    providerStatus: {
+      configured: false,
+      provider: "local",
+      reason: "External model providers are disabled; responses use Zoi's local engine."
+    }
   };
 }
 
