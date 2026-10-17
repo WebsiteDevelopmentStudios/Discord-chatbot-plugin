@@ -269,7 +269,8 @@ export function generateReply({ message, conversationId = "default", history = [
 // do not call hosted or OpenAI-compatible model providers, even if old provider
 // environment variables remain configured on the host.
 async function searchLearnedKnowledge(message) {
-  const base = (process.env.ZOI_LEARNING_URL || "").replace(/\\/$/, "");
+  const rawBase = process.env.ZOI_LEARNING_URL || "";
+  const base = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
   const token = process.env.ZOI_LEARNING_TOKEN || "";
   if (!base || !token) return null;
   try {
