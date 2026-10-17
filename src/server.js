@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { generateReply, resetConversation } from "./intelligence.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dataFile = resolve(process.env.DATA_FILE || resolve(here, "../data/api-keys.json"));
@@ -125,14 +126,30 @@ export async function handleRequest(req, res) {
       const message = typeof body.message === "string" ? body.message.trim() : "";
       if (!message) return send(res, 400, { error: "message_required", message: "Send a non-empty 'message' string." });
       if (message.length > 4000) return send(res, 413, { error: "message_too_long", maxLength: 4000 });
-      return send(res, 501, {
-        error: "intelligence_engine_not_ready",
-        message: "API key authentication works, but the original conversational intelligence engine is still under development.",
-        requestId: randomBytes(8).toString("hex")
-      });
+      const conversationId = typeof body.conversationId === "string" && body.conversationId.trim()
+        ? body.conversationId.trim().slice(0, 160)
+        : record.id;
+      const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
+      const completion = generateReply({ message, conversationId, history });
+      return send(res, 200, completion);
     }
 
-    return send(res, 404, { error: "not_found", routes: ["GET /health", "POST /v1/keys", "GET /v1/keys", "POST /v1/chat/completions"] });
+    if (req.method === "POST" && url.pathname === "/v1/chat/reset") {
+      const auth = req.headers.authorization || "";
+      const suppliedKey = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (!suppliedKey) return send(res, 401, { error: "missing_api_key" });
+      const keys = await loadKeys();
+      const record = keys.find((entry) => entry.status === "active" && entry.keyHash === hashKey(suppliedKey));
+      if (!record) return send(res, 401, { error: "invalid_api_key" });
+      const body = await readJson(req);
+      const conversationId = typeof body.conversationId === "string" && body.conversationId.trim()
+        ? body.conversationId.trim().slice(0, 160)
+        : record.id;
+      return send(res, 200, { reset: resetConversation(conversationId), conversationId });
+
+    }
+
+    return send(res, 404, { error: "not_found", routes: ["GET /health", "POST /v1/keys", "GET /v1/keys", "POST /v1/chat/completions", "POST /v1/chat/reset"] });
   } catch (error) {
     return send(res, error.status || 500, { error: error.status ? "bad_request" : "internal_error", message: error.status ? error.message : "Unexpected server error." });
   }
