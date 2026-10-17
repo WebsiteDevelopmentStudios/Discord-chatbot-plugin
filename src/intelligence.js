@@ -1,4 +1,5 @@
 import { retrieveKnowledge } from "./knowledge.js";
+import { completeWithModel, getModelStatus } from "./model-provider.js";
 
 const conversations = new Map();
 const MAX_CONVERSATIONS = 10_000;
@@ -246,6 +247,40 @@ export function generateReply({ message, conversationId = "default", history = [
     conversationId: id
   };
 }
+const RULE_ONLY_INTENTS = new Set([
+  "math", "memory_store", "memory_recall", "history_recall", "identity", "capabilities"
+]);
+
+export async function generateReplyAsync({ message, conversationId = "default", history = [] }) {
+  const fallback = generateReply({ message, conversationId, history });
+  const intent = fallback.intent;
+  const status = getModelStatus();
+  if (!status.configured || RULE_ONLY_INTENTS.has(intent)) {
+    return { ...fallback, engine: "rules", providerStatus: status };
+  }
+
+  const id = String(conversationId).slice(0, 160);
+  const state = conversations.get(id);
+  const previousHistory = state ? state.history.slice(0, -2) : [];
+  const knowledge = knowledgeAnswer(String(message));
+  const answer = await completeWithModel({ message, history: previousHistory, knowledge });
+  if (!answer) return { ...fallback, engine: "rules", providerStatus: status };
+
+  if (state) {
+    const last = state.history.at(-1);
+    if (last?.role === "assistant") last.content = answer;
+  }
+  return {
+    ...fallback,
+    model: status.model || "zoi-intelligence-0.4",
+    choices: [{ index: 0, message: { role: "assistant", content: answer }, finish_reason: "stop" }],
+    intent: "model_response",
+    confidence: 0.75,
+    engine: status.provider,
+    providerStatus: status
+  };
+}
+
 export function resetConversation(conversationId = "default") {
   return conversations.delete(String(conversationId).slice(0, 160));
 }
