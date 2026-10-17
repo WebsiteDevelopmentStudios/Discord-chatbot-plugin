@@ -1,0 +1,49 @@
+{"text":"what is artificial intelligence","label":"ai_ml"}
+{"text":"how do neural networks learn","label":"ai_ml"}
+{"text":"explain a language model","label":"ai_ml"}
+{"text":"what is machine learning","label":"ai_ml"}
+{"text":"how does a transformer work","label":"ai_ml"}
+{"text":"what are embeddings","label":"ai_ml"}
+{"text":"what is semantic search","label":"ai_ml"}
+{"text":"how can a chatbot understand meaning","label":"ai_ml"}
+{"text":"what is javascript","label":"programming"}
+{"text":"how do python functions work","label":"programming"}
+{"text":"explain a loop in code","label":"programming"}
+{"text":"what is a variable","label":"programming"}
+{"text":"how do i debug a program","label":"programming"}
+{"text":"what is an api endpoint","label":"programming"}
+{"text":"what does json mean","label":"programming"}
+{"text":"how do git commits work","label":"programming"}
+{"text":"what is a minecraft server","label":"games"}
+{"text":"how does geyser crossplay work","label":"games"}
+{"text":"what is a paper plugin","label":"games"}
+{"text":"how do minecraft commands work","label":"games"}
+{"text":"what is a discord bot","label":"communication"}
+{"text":"how does discord oauth work","label":"communication"}
+{"text":"what is an http request","label":"networking"}
+{"text":"what is dns","label":"networking"}
+{"text":"what does port 443 do","label":"networking"}
+{"text":"explain tcp and udp","label":"networking"}
+{"text":"how does https encryption work","label":"networking"}
+{"text":"what is photosynthesis","label":"science"}
+{"text":"why do objects fall","label":"science"}
+{"text":"what is gravity","label":"science"}
+{"text":"how does electricity work","label":"science"}
+{"text":"what is evolution","label":"science"}
+{"text":"what is climate change","label":"science"}
+{"text":"what is a database","label":"data_storage"}
+{"text":"what is postgresql","label":"data_storage"}
+{"text":"how do i save data between restarts","label":"data_storage"}
+{"text":"what is ram compared with storage","label":"data_storage"}
+{"text":"how do i deploy an app to render","label":"hosting"}
+{"text":"what is a web server","label":"hosting"}
+{"text":"why did my deployment fail","label":"hosting"}
+{"text":"how do environment variables work","label":"hosting"}
+{"text":"what is privacy online","label":"security"}
+{"text":"how should i store a password","label":"security"}
+{"text":"what is an api key","label":"security"}
+{"text":"how do i protect a server","label":"security"}
+{"text":"what is probability","label":"math"}
+{"text":"calculate 12 times 9","label":"math"}
+{"text":"what is a percentage","label":"math"}
+{"text":"how does statistics work","label":"math"}
