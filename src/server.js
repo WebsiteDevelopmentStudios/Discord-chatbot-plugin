@@ -77,6 +77,16 @@ function allowKeyCreation(req) {
 export async function handleRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
   try {
+    if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
+      const page = await readFile(resolve(here, "../public/index.html"), "utf8");
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache",
+        "x-content-type-options": "nosniff"
+      });
+      return res.end(page);
+    }
+
     if (req.method === "GET" && url.pathname === "/health") {
       return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.1.0" });
     }
