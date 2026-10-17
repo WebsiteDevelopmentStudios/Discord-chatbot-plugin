@@ -35,6 +35,11 @@
       <p class="hint">Reuse the same ID to test memory across messages. Reset clears the engine's memory for that conversation.</p>
     </section>
     <section class="panel">
+      <div class="panel-head"><h3>Quick checks</h3><span class="step">03 / TESTS</span></div>
+      <div class="actions"><button class="secondary" id="runHealth">Check health</button><button class="secondary" id="runKeyTest">Test key</button></div>
+      <p class="hint">Responses and errors appear in the response inspector below the chat.</p>
+    </section>
+    <section class="panel">
       <div class="panel-head"><h3>Train Zoi models</h3><span class="step">04 / TRAIN</span></div>
       <div class="field"><label for="trainingToken">Training access token</label><input id="trainingToken" type="password" autocomplete="off" spellcheck="false" placeholder="Enter the Render training token"></div>
       <button id="trainModels" style="width:100%">Train all 3 models</button>
@@ -42,11 +47,6 @@
       <div class="train-state" id="trainState" role="status">Training runs on the Render service. Your token is kept in this page only.</div>
       <div class="learned-results" id="learnedResults"></div>
       <p class="hint">At 100%, review the model labels, sample predictions, vocabulary sizes, and training loss. These are small experimental networks, not a full GPT model.</p>
-    </section>
-    <section class="panel">
-      <div class="panel-head"><h3>Quick checks</h3><span class="step">03 / TESTS</span></div>
-      <div class="actions"><button class="secondary" id="runHealth">Check health</button><button class="secondary" id="runKeyTest">Test key</button></div>
-      <p class="hint">Responses and errors appear in the response inspector below the chat.</p>
     </section>
   </aside>
   <main class="panel chat-panel">
@@ -56,7 +56,7 @@
     <div class="details"><details><summary>Response inspector · raw JSON</summary><pre class="json" id="responseJson">No API response yet.</pre></details></div>
   </main>
 </div>
-<footer class="footer"><span>Independent, model-free prototype · No paid model API used</span><span><a href="/health" target="_blank" rel="noreferrer">Health endpoint</a> · <a href="https://github.com/WebsiteDevelopmentStudios/Discord-chatbot-plugin" target="_blank" rel="noreferrer">Source code</a></span></footer>
+<footer class="footer"><span>Independent neural-model experiment · No paid model API used</span><span><a href="/health" target="_blank" rel="noreferrer">Health endpoint</a> · <a href="https://github.com/WebsiteDevelopmentStudios/Discord-chatbot-plugin" target="_blank" rel="noreferrer">Source code</a></span></footer>
 </div>
 <script>
 (() => {
