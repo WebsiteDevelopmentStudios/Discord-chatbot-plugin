@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
+import { Worker } from "node:worker_threads";
+import { timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +15,40 @@ const keyPrefix = "zai_";
 const requestWindows = new Map();
 const WINDOW_MS = 60_000;
 const MAX_KEY_CREATIONS_PER_WINDOW = 5;
+let trainingWorker = null;
+let trainingJob = { status: "idle", progress: 0, stage: "idle", message: "Training has not started.", summaries: null, error: null, startedAt: null, finishedAt: null };
+
+function validTrainingToken(req) {
+  const expected = process.env.ZOI_TRAINING_TOKEN || "";
+  const auth = req.headers.authorization || "";
+  const supplied = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!expected || !supplied) return false;
+  const a = Buffer.from(expected), b = Buffer.from(supplied);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function startTraining() {
+  if (trainingWorker) return false;
+  trainingJob = { status: "running", progress: 0, stage: "starting", message: "Starting training worker…", summaries: null, error: null, startedAt: new Date().toISOString(), finishedAt: null };
+  trainingWorker = new Worker(new URL("./training-worker.js", import.meta.url), { workerData: { root: resolve(here, "..") } });
+  trainingWorker.on("message", (message) => {
+    if (message.type === "progress") {
+      trainingJob = { ...trainingJob, ...message, status: message.progress >= 100 ? "complete" : "running", updatedAt: new Date().toISOString() };
+    } else if (message.type === "failed") {
+      trainingJob = { ...trainingJob, status: "failed", error: message.message, message: "Training failed.", finishedAt: new Date().toISOString() };
+    }
+  });
+  trainingWorker.on("error", (error) => {
+    trainingJob = { ...trainingJob, status: "failed", error: error.message, message: "Training worker failed.", finishedAt: new Date().toISOString() };
+  });
+  trainingWorker.on("exit", (code) => {
+    if (code !== 0 && trainingJob.status !== "failed" && trainingJob.status !== "complete") {
+      trainingJob = { ...trainingJob, status: "failed", error: "Training worker exited unexpectedly.", message: "Training failed.", finishedAt: new Date().toISOString() };
+    }
+    trainingWorker = null;
+  });
+  return true;
+}
 
 async function loadKeys() {
   try {
@@ -92,6 +128,16 @@ export async function handleRequest(req, res) {
       return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", model: getModelStatus() });
     }
 
+    if ((req.method === "POST" && url.pathname === "/v1/train/start") || (req.method === "GET" && url.pathname === "/v1/train/status")) {
+      if (!validTrainingToken(req)) return send(res, 401, { error: "invalid_training_token", message: "Enter the training token configured by the service operator." });
+      if (req.method === "POST") {
+        if (trainingWorker || trainingJob.status === "running") return send(res, 409, { error: "training_in_progress", message: "Training is already running.", job: trainingJob });
+        startTraining();
+        return send(res, 202, { accepted: true, job: trainingJob });
+      }
+      return send(res, 200, { job: trainingJob });
+    }
+
     if (req.method === "POST" && url.pathname === "/v1/keys") {
       if (!allowKeyCreation(req)) {
         return send(res, 429, { error: "key_creation_rate_limited", message: "Maximum 5 key creations per IP per minute." });
@@ -163,7 +209,7 @@ export async function handleRequest(req, res) {
 
     }
 
-    return send(res, 404, { error: "not_found", routes: ["GET /health", "POST /v1/keys", "GET /v1/keys", "POST /v1/chat/completions", "POST /v1/chat/reset"] });
+    return send(res, 404, { error: "not_found", routes: ["GET /health", "POST /v1/train/start", "GET /v1/train/status", "POST /v1/keys", "GET /v1/keys", "POST /v1/chat/completions", "POST /v1/chat/reset"] });
   } catch (error) {
     return send(res, error.status || 500, { error: error.status ? "bad_request" : "internal_error", message: error.status ? error.message : "Unexpected server error." });
   }
