@@ -1,3 +1,5 @@
+import { retrieveKnowledge } from "./knowledge.js";
+
 const conversations = new Map();
 const MAX_CONVERSATIONS = 10_000;
 const MAX_HISTORY = 12;
@@ -126,23 +128,9 @@ function answerFromNotes(text, state) {
     .find((item) => overlapScore(text, item) >= 0.18);
   return note || null;
 }
-const KNOWLEDGE = [
-  { keys: ["api", "application programming interface", "endpoint"], answer: "An API (application programming interface) is a defined way for software to communicate with another program. An endpoint is a particular URL or operation exposed by an API. In this project, your app sends an HTTP request to an endpoint, and the server returns JSON." },
-  { keys: ["json"], answer: "JSON (JavaScript Object Notation) is a text format for structured data. It uses objects, arrays, strings, numbers, booleans, and null. APIs commonly send and receive JSON in HTTP request and response bodies." },
-  { keys: ["http", "https"], answer: "HTTP is the request/response protocol used by websites and many APIs. HTTPS is HTTP protected with TLS encryption. For public APIs, use HTTPS and avoid putting secret API keys in URLs." },
-  { keys: ["api key", "apikey", "bearer token"], answer: "An API key is a credential that identifies or authorizes a client. Keep secret keys out of public browser code and repositories. This prototype uses an Authorization: Bearer header; a browser playground is useful for testing, but keys entered into a public page are exposed to that browser session." },
-  { keys: ["machine learning", "artificial intelligence", " ai "], answer: "Artificial intelligence is a broad field of systems that perform tasks associated with perception, language, planning, or reasoning. Machine learning is one approach: a model learns patterns from data. This project currently uses hand-written rules and small built-in knowledge, not a trained language model, so it will not have the broad language ability of modern LLMs." },
-  { keys: ["large language model", "llm", "language model"], answer: "A large language model (LLM) is a neural network trained on large amounts of text to predict and generate language. It can generalize across many topics, but it needs substantial training data and compute. A rule-based engine like this one is much cheaper to run, but its knowledge and flexibility are far more limited." },
-  { keys: ["javascript", "node.js", "nodejs"], answer: "JavaScript is a programming language widely used on the web. Node.js runs JavaScript outside the browser, which lets this project run its HTTP API server and intelligence code with the same language." },
-  { keys: ["render deployment", "render.com", "render hosting"], answer: "Render hosts this API as a web service. It starts the Node.js process and routes public HTTPS requests to it. Keep in mind that local files on a free service may not be durable across restarts or deployments; production API keys should live in persistent storage." },
-  { keys: ["conversation id", "conversation memory", "memory"], answer: "A conversation ID groups messages into one conversation so the engine can reuse context. In the current prototype, memory is stored in process memory, so it can disappear on a restart or when a request reaches a different instance. It is not long-term or durable memory." }
-];
 function knowledgeAnswer(text) {
-  const lower = " " + text.toLowerCase().replace(/[^\p{L}\p{N}.]+/gu, " ") + " ";
-  for (const item of KNOWLEDGE) {
-    if (item.keys.some((key) => lower.includes(" " + key.trim() + " ") || lower.includes(key))) return item.answer;
-  }
-  return null;
+  const result = retrieveKnowledge(text);
+  return result?.text ?? null;
 }
 function respond(text, state) {
   const clean = text.trim(), normalized = normalize(clean), lower = clean.toLowerCase();
