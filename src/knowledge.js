@@ -65,8 +65,24 @@ function tokens(value) {
 function queryTerms(value) {
   return new Set(tokens(normalizeForUnderstanding(value)).filter((term) => (term.length > 2 || term.length === 2) && !STOP.has(term)));
 }
+// Normalize each bundled document only once. Re-normalizing every document for
+// every query term made retrieval needlessly expensive because spelling recovery
+// scans the local dictionary. Cache term sets for fast repeat lookups.
+const DOCUMENT_TERM_CACHE = new Map();
 function documentTerms(document) {
-  return new Set([...queryTerms(document.title), ...queryTerms(document.terms.join(" ")), ...queryTerms(document.text)]);
+  let cached = DOCUMENT_TERM_CACHE.get(document.id);
+  if (!cached) {
+    const title = queryTerms(document.title);
+    const aliases = queryTerms(document.terms.join(" "));
+    const body = queryTerms(document.text);
+    cached = { all: new Set([...title, ...aliases, ...body]), title, aliases, body };
+    DOCUMENT_TERM_CACHE.set(document.id, cached);
+  }
+  return cached.all;
+}
+function documentTermSets(document) {
+  documentTerms(document);
+  return DOCUMENT_TERM_CACHE.get(document.id);
 }
 
 // Weight rarer query terms more strongly than common words. This is still local
@@ -75,9 +91,10 @@ function documentTerms(document) {
 function scoreDocument(query, document) {
   const q = [...queryTerms(query)];
   if (!q.length) return 0;
-  const titleTerms = queryTerms(document.title);
-  const aliasTerms = queryTerms(document.terms.join(" "));
-  const bodyTerms = queryTerms(document.text);
+  const cachedTerms = documentTermSets(document);
+  const titleTerms = cachedTerms.title;
+  const aliasTerms = cachedTerms.aliases;
+  const bodyTerms = cachedTerms.body;
   const normalizedQuery = " " + normalizeForUnderstanding(query).replace(/[^\\p{L}\\p{N}]+/gu, " ").trim() + " ";
   let totalWeight = 0, matchedWeight = 0, titleWeight = 0, aliasWeight = 0, bodyWeight = 0;
   for (const term of q) {
