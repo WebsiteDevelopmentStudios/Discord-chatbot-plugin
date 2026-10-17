@@ -133,6 +133,35 @@ function knowledgeAnswer(text) {
   const result = retrieveKnowledge(text);
   return result?.text ?? null;
 }
+
+// Local, deterministic handling for common open-ended suggestion requests.
+// This lets Zoi answer simple creative prompts without requiring a knowledge
+// article or an external model provider.
+function creativeSuggestion(text) {
+  const value = normalizeForUnderstanding(text).toLowerCase();
+  const animalNames = [
+    { pattern: /\b(cat|kitten|kitty)\b/, names: ["Luna", "Mochi", "Milo", "Nala", "Oliver", "Pepper", "Cleo", "Biscuit", "Shadow", "Pumpkin", "Misty", "Bean"] },
+    { pattern: /\b(dog|puppy)\b/, names: ["Luna", "Max", "Charlie", "Daisy", "Milo", "Scout", "Coco", "Teddy", "Maple", "Buddy", "Pepper", "Riley"] },
+    { pattern: /\b(rabbit|bunny)\b/, names: ["Clover", "Thumper", "Hazel", "Oreo", "Mochi", "Poppy", "Cocoa", "Daisy", "Bunbun", "Maple"] },
+    { pattern: /\b(bird|parrot|cockatiel)\b/, names: ["Kiwi", "Sunny", "Skye", "Rio", "Peaches", "Pip", "Blue", "Mango", "Jasper", "Poppy"] }
+  ];
+  const asksForNames = /\b(name|names|name ideas|name suggestions)\b/.test(value)
+    && /\b(give|suggest|recommend|list|some|ideas|need|want|pick|choose)\b/.test(value);
+  if (asksForNames) {
+    const match = animalNames.find((entry) => entry.pattern.test(value));
+    if (match) return { text: `Here are some ${match.pattern.test(value) ? (value.match(match.pattern)?.[0] || "pet") : "pet"} names: ${match.names.join(", ")}.`, intent: "creative_suggestions", confidence: 0.88 };
+    if (/\b(usernames?|screen names?)\b/.test(value)) {
+      return { text: "Here are some username ideas: PixelFox, NovaByte, Cloudberry, EchoSpark, MoonMochi, FrostNova, CozyComet, and NeonFern.", intent: "creative_suggestions", confidence: 0.84 };
+    }
+  }
+  if (/\b(tell me a joke|make me laugh|give me a joke)\b/.test(value)) {
+    return { text: "Why did the cat sit on the computer? It wanted to keep an eye on the mouse.", intent: "creative_response", confidence: 0.9 };
+  }
+  if (/\b(what should i (?:cook|make|eat)|dinner ideas|meal ideas)\b/.test(value)) {
+    return { text: "Here are a few easy meal ideas: vegetable stir-fry with rice, pasta with tomato sauce, loaded baked potatoes, bean and cheese quesadillas, or an omelet with toast. Tell me what ingredients you have and I can narrow it down.", intent: "creative_suggestions", confidence: 0.82 };
+  }
+  return null;
+}
 function respond(text, state) {
   const clean = text.trim(), normalized = normalizeForUnderstanding(normalize(clean)), lower = normalizeForUnderstanding(clean);
   const math = calculate(clean);
@@ -200,6 +229,9 @@ function respond(text, state) {
   if (known) {
     return { text: known, intent: "built_in_knowledge", confidence: 0.79 };
   }
+  const creative = creativeSuggestion(clean);
+  if (creative) return creative;
+
   if (/\b(yes|yeah|yep|no|nope|okay|ok|sure|maybe|i think so|not really)\b/i.test(normalized)) {
     const previous = [...state.history].reverse().find((entry) => entry.role === "assistant");
     if (previous) return { text: "Got it. Could you tell me a little more about what you mean, so I don't assume the wrong thing?", intent: "contextual_reply", confidence: 0.55 };
