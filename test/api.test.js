@@ -49,3 +49,22 @@ test("rejects an invalid API key", async () => {
   });
   assert.equal(response.status, 401);
 });
+
+test("chat endpoint returns an intelligence response for a valid key", async () => {
+  const created = await fetch(base + "/v1/keys", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ label: "Chat endpoint test" })
+  });
+  const { key } = await created.json();
+  const response = await fetch(base + "/v1/chat/completions", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+    body: JSON.stringify({ message: "hello", conversationId: "api-chat-test" })
+  });
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.object, "chat.completion");
+  assert.equal(payload.choices[0].message.role, "assistant");
+  assert.match(payload.choices[0].message.content, /hello|hey|hi/i);
+});
