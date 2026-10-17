@@ -54,7 +54,7 @@ function trainMlp({name, examples, textField="text", labelField="label", epochs=
     const h=Array(hidden).fill(0).map((_,j)=>Math.max(0,b1[j]+x.reduce((s,v,i)=>s+v*w1[i][j],0)));
     const p=softmax(labels.map((_,c)=>b2[c]+h.reduce((s,v,j)=>s+v*w2[j][c],0)));
     const order=p.map((score,i)=>({label:labels[i],score})).sort((a,b)=>b.score-a.score);
-    return {prediction:order[0].label,confidence:Number(order[0].score.toFixed(3)),alternatives:order.slice(0,3).map(x=>({label:x.label,score:Number(x.score.toFixed(3)}))};
+    return {prediction:order[0].label,confidence:Number(order[0].score.toFixed(3)),alternatives:order.slice(0,3).map(x=>({label:x.label,score:Number(x.score.toFixed(3))}))};
   }
   const artifact={format:"zoi-render-mlp-v1",name,vocabulary:vocab,labels,weights:{w1,b1,w2,b2},trainingExamples:clean.length,epochs,finalLoss:Number(finalLoss.toFixed(4))};
   return {artifact,summary:{name,trainingExamples:clean.length,vocabularySize:vocab.length,labels,epochs,finalLoss:Number(finalLoss.toFixed(4)),samplePredictions:clean.slice(0,5).map(r=>({input:r[textField],expected:r[labelField],...predict(r[textField])}))}};
