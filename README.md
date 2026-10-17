@@ -14,7 +14,7 @@ A hybrid conversational intelligence API for any developer or application. Mallo
 - Reset in-memory conversation state with `POST /v1/chat/reset`.
 - Automated tests with GitHub Actions.
 
-This is still a hand-built engine using language patterns, deterministic arithmetic, ranked retrieval over hand-authored knowledge, and conversation state—not a trained large language model. The larger knowledge base should improve answers on covered topics, but retrieval is not the same as understanding and it cannot reliably answer arbitrary questions. The engine reports uncertainty for questions outside its coverage. It has no live web access and does not learn new world knowledge automatically from conversations.
+Without a configured provider, the fallback is a hand-built engine using language patterns, deterministic arithmetic, ranked retrieval over hand-authored knowledge, and conversation state—not a trained large language model. With a provider configured, open-ended messages can use that model, while arithmetic and conversation memory remain local and deterministic. Retrieval is not the same as understanding, and model quality depends on the selected model. Zoi has no built-in live web access and does not train itself from conversations.
 
 ## Hybrid model architecture
 
@@ -104,7 +104,7 @@ The response uses a simple chat-completion structure:
 ```json
 {
   "object": "chat.completion",
-  "model": "zoi-intelligence-0.3",
+  "model": "zoi-intelligence-0.4",
   "choices": [
     {
       "index": 0,
