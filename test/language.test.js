@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeForUnderstanding, editDistance, fuzzyTermMatch } from "../src/language.js";
+import { normalizeForUnderstanding, editDistance, fuzzyTermMatch, dictionaryStats } from "../src/language.js";
 
 test("normalizes common typos, contractions, and casual wording", () => {
   assert.equal(normalizeForUnderstanding("wahts teh diffrence between APIs?"), "what is the compare apis");
@@ -14,3 +14,12 @@ test("matches small spelling errors without fuzzy-matching very short words", ()
   assert.equal(fuzzyTermMatch("ai", new Set(["api"])), false);
 });
 
+test("loads a broad offline English word list", () => {
+  const stats = dictionaryStats();
+  assert.equal(stats.available, true);
+  assert.ok(stats.words > 100000, `expected a large dictionary, got ${stats.words}`);
+});
+
+test("corrects an unfamiliar typo using the dictionary, not only hard-coded examples", () => {
+  assert.match(normalizeForUnderstanding("I need comunication help"), /communication help/);
+});
