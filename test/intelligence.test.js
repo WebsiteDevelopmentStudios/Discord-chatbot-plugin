@@ -49,6 +49,13 @@ test("uses an empathetic response for emotional language", () => {
   assert.match(result.choices[0].message.content,/sorry|listen/i);
 });
 
+test("asks for context when a one-word message is ambiguous", () => {
+  const result = generateReply({ message: "gay", conversationId: "ambiguous-one-word" });
+  assert.equal(result.intent, "ambiguous_input");
+  assert.match(result.choices[0].message.content, /what would you like to know or talk about regarding/i);
+  assert.match(result.choices[0].message.content, /gay/i);
+});
+
 test("does not pretend to know unsupported facts", () => {
   const result = generateReply({ message: "Who invented a fictional device called the glorpulator?", conversationId: "unknown-test" });
   assert.match(result.choices[0].message.content, /limited|context|detail/i);
