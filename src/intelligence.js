@@ -1,5 +1,6 @@
 import { retrieveKnowledge } from "./knowledge.js";
 import { completeWithModel, getModelStatus } from "./model-provider.js";
+import { normalizeForUnderstanding } from "./language.js";
 
 const conversations = new Map();
 const MAX_CONVERSATIONS = 10_000;
@@ -62,7 +63,7 @@ function rememberFact(text, state) {
 // A small recursive-descent calculator. It intentionally supports arithmetic only,
 // and never evaluates user text as JavaScript.
 function calculate(text) {
-  let expression = text.trim()
+  let expression = normalizeForUnderstanding(text).trim()
     .replace(/^(?:what is|calculate|compute|solve|work out)\s+/i, "")
     .replace(/[×✕]/g, "*").replace(/[÷]/g, "/").replace(/−/g, "-")
     .replace(/\bplus\b/gi, "+").replace(/\bminus\b/gi, "-")
@@ -134,7 +135,7 @@ function knowledgeAnswer(text) {
   return result?.text ?? null;
 }
 function respond(text, state) {
-  const clean = text.trim(), normalized = normalize(clean), lower = clean.toLowerCase();
+  const clean = text.trim(), normalized = normalizeForUnderstanding(normalize(clean)), lower = normalizeForUnderstanding(clean);
   const math = calculate(clean);
   if (math?.error) return { text: math.error, intent: "math", confidence: 0.99 };
   if (math) return { text: `The answer is ${math.result}.`, intent: "math", confidence: 0.99 };
@@ -159,7 +160,7 @@ function respond(text, state) {
     return { text: "I'm sorry it's feeling that way. If you want to talk about it, I'm here to listen. What has been the hardest part?", intent: "empathy", confidence: 0.78 };
   }
   if (/\b(what is your purpose|what can you do|your capabilities|help me|^help$)\b/i.test(lower)) {
-    return { text: "I can hold a basic conversation, remember some details during this conversation, recall earlier messages, explain a few common programming/API concepts, and calculate arithmetic expressions. I don't have live web access or broad world knowledge, so I'll say when I'm unsure rather than pretend to know.", intent: "capabilities", confidence: 0.98 };
+    return { text: "I can chat, remember details during this conversation, recall earlier messages, calculate arithmetic, and search my built-in reference knowledge. Without an external language model or live web access, I may not know every answer, but I will use relevant information I have, explain what I can, and be clear about uncertainty rather than invent facts.", intent: "capabilities", confidence: 0.98 };
   }
   if (/\b(what is my name|what's my name|do you know my name|remember my name)\b/i.test(lower)) {
     return state.facts.name
@@ -197,7 +198,7 @@ function respond(text, state) {
   if (noted && /\b(what|which|remind|remember|tell me)\b/i.test(lower)) return { text: `You asked me to remember: “${noted}”.`, intent: "memory_recall", confidence: 0.83 };
 
   const known = knowledgeAnswer(clean);
-  if (known && /\b(what|why|how|explain|define|tell me|describe|teach|meaning|is|are|does|do)\b/i.test(lower)) {
+  if (known) {
     return { text: known, intent: "built_in_knowledge", confidence: 0.79 };
   }
   if (/\b(yes|yeah|yep|no|nope|okay|ok|sure|maybe|i think so|not really)\b/i.test(normalized)) {
