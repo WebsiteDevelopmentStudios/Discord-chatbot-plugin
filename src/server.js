@@ -248,7 +248,7 @@ export async function handleRequest(req, res) {
       if (!["approved", "rejected"].includes(body.status)) return send(res, 400, { error: "status_must_be_approved_or_rejected" });
       return learningStoreResponse(res, () => callLearningStore(`/v1/examples/${learningReviewId}/review`, {
         method: "POST",
-        body: JSON.stringify({ status: body.status })
+        body: JSON.stringify({ status: body.status, correction: typeof body.correction === "string" ? body.correction : "" })
       }));
     }
 
