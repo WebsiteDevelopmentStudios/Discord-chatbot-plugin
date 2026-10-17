@@ -1,8 +1,8 @@
 {
   "name": "discord-chatbot-intelligence-api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "A self-developed, model-independent conversational intelligence API prototype.",
+  "description": "A hybrid conversational intelligence API with rules fallback and optional local or OpenAI-compatible models.",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
