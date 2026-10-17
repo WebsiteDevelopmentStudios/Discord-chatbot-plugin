@@ -30,21 +30,21 @@ const COMMON_CORRECTIONS = new Map(Object.entries({
 }));
 
 const SYNONYMS = [
-  [/\\b(err|error|issue|problem|bug|broken|not working)\\b/gu, " error "],
-  [/\\b(typo|typos|mistype|mistyped|misspelling|misspelled)\\b/gu, " spelling "],
-  [/\\b(learn|learning|understand|understanding|figure out)\\b/gu, " explain "],
-  [/\\b(give me|tell me|show me|help me with)\\b/gu, " explain "],
-  [/\\b(whats|what's)\\b/gu, " what is "],
-  [/\\b(how do i|how can i|how to)\\b/gu, " how "],
-  [/\\b(meaning of|define|definition of)\\b/gu, " meaning "],
-  [/\\b(difference between|compare|versus|vs\\.? )\\b/gu, " compare "]
+  [/\b(err|error|issue|problem|bug|broken|not working)\b/gu, " error "],
+  [/\b(typo|typos|mistype|mistyped|misspelling|misspelled)\b/gu, " spelling "],
+  [/\b(learn|learning|understand|understanding|figure out)\b/gu, " explain "],
+  [/\b(give me|tell me|show me|help me with)\b/gu, " explain "],
+  [/\b(whats|what's)\b/gu, " what is "],
+  [/\b(how do i|how can i|how to)\b/gu, " how "],
+  [/\b(meaning of|define|definition of)\b/gu, " meaning "],
+  [/\b(difference between|compare|versus|vs\.? )\b/gu, " compare "]
 ];
 
 let dictionary = new Set();
 let dictionaryBuckets = new Map();
 try {
   const wordListPath = require("word-list");
-  const words = readFileSync(wordListPath, "utf8").split(/\\r?\\n/u);
+  const words = readFileSync(wordListPath, "utf8").split(/\r?\n/u);
   for (const raw of words) {
     const word = raw.trim().toLowerCase();
     if (!/^[a-z]{3,32}$/u.test(word)) continue;
@@ -109,19 +109,19 @@ function dictionaryCorrection(word) {
 
 export function normalizeForUnderstanding(input) {
   let text = String(input ?? "").toLowerCase().normalize("NFKC");
-  text = text.replace(/[’‘]/g, "'").replace(/\\b([a-z]+)'(?:re|ve|ll|d|m|s)\\b/gu, (full, stem) => {
+  text = text.replace(/[’‘]/g, "'").replace(/\b([a-z]+)'(?:re|ve|ll|d|m|s)\b/gu, (full, stem) => {
     const suffix = full.slice(stem.length + 1);
     const expansions = { re: " are", ve: " have", ll: " will", d: " would", m: " am", s: " is" };
     return stem + (expansions[suffix] || "");
   });
-  text = text.replace(/\\bdon't\\b/gu, "do not").replace(/\\bdoesn't\\b/gu, "does not").replace(/\\bdidn't\\b/gu, "did not").replace(/\\bcan't\\b/gu, "cannot").replace(/\\bwon't\\b/gu, "will not").replace(/\\bisn't\\b/gu, "is not").replace(/\\baren't\\b/gu, "are not");
-  text = text.replace(/[^\\p{L}\\p{N}' +*/%^().-]+/gu, " ");
-  text = text.replace(/\\b[a-z]+\\b/gu, (word) => {
+  text = text.replace(/\bdon't\b/gu, "do not").replace(/\bdoesn't\b/gu, "does not").replace(/\bdidn't\b/gu, "did not").replace(/\bcan't\b/gu, "cannot").replace(/\bwon't\b/gu, "will not").replace(/\bisn't\b/gu, "is not").replace(/\baren't\b/gu, "are not");
+  text = text.replace(/[^\p{L}\p{N}' +*/%^().-]+/gu, " ");
+  text = text.replace(/\b[a-z]+\b/gu, (word) => {
     const known = COMMON_CORRECTIONS.get(word);
     return known || dictionaryCorrection(word);
   });
   for (const [pattern, replacement] of SYNONYMS) text = text.replace(pattern, replacement);
-  return text.replace(/\\s+/g, " ").trim();
+  return text.replace(/\s+/g, " ").trim();
 }
 
 export function fuzzyTermMatch(queryTerm, candidateTerms) {
