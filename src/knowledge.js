@@ -55,6 +55,7 @@ const DOCUMENTS = [
   { id:"space", title:"Stars, planets, and galaxies", terms:["space","astronomy","planet","star","galaxy","solar system","black hole"], text:"A star produces energy through nuclear fusion in its core. A planet orbits a star or stellar remnant and does not generate its own sustained fusion energy. A galaxy contains stars, gas, dust, dark matter, and other objects bound by gravity. Our Solar System is in the Milky Way galaxy. Black holes are regions where gravity is so strong that beyond the event horizon, light cannot escape." },
   { id:"writing", title:"Clear writing and explanations", terms:["how to write clearly","summarize","explanation","writing","grammar","proofread"], text:"Clear writing starts with the reader's goal. Put the main point first, use concrete words, organize related ideas together, and give examples for abstract concepts. A useful summary preserves the main claims and important qualifications without copying every detail. Proofreading should check meaning and structure as well as spelling, punctuation, and grammar." },
   { id:"critical-thinking", title:"Critical thinking and evidence", terms:["critical thinking","evaluate a claim","evidence","logical fallacy","fact checking","reasoning"], text:"Critical thinking means evaluating claims using evidence, logic, context, and alternative explanations. Separate observations from interpretations, check whether a source is reliable and current, and ask what evidence would change your mind. Correlation is not necessarily causation, a confident tone is not proof, and one anecdote may not represent a general pattern. When evidence is incomplete, state uncertainty explicitly." },
+  { id:"citrus-color", title:"Why oranges are orange", terms:["why are oranges orange","orange fruit color","oranges","orange peel","citrus fruit color","carotenoids in oranges"], text:"Oranges get their orange color mainly from natural pigments called carotenoids in the peel, including beta-carotene and other related compounds. As oranges ripen, chlorophyll in the peel breaks down and the orange pigments become more visible. In warm climates, ripe oranges can sometimes stay greenish because warmth slows chlorophyll breakdown, even when the fruit is ripe." },
   { id:"light-atmosphere", title:"Light, colors, and Earth's atmosphere", terms:["why is the sky blue","sky looks blue","blue sky","rayleigh scattering","light scattering","wavelength of light","why sunsets are red","sunset colors","color of the sky","atmosphere and sunlight"], text:"The sky looks blue because molecules in Earth's atmosphere scatter sunlight. Air molecules scatter shorter wavelengths, such as blue and violet, more strongly than longer wavelengths; this is called Rayleigh scattering. Human vision is more sensitive to blue than violet, and some violet light is absorbed in the upper atmosphere, so the scattered light reaching us makes the sky appear blue. At sunrise and sunset, sunlight travels through more atmosphere, so much of the blue light is scattered out of the direct path and the remaining sunlight looks red, orange, or pink. Clouds usually look white or gray because water droplets and ice crystals scatter many visible wavelengths more evenly." },
   { id:"machine-learning", title:"How machine learning works", terms:["machine learning","training data","inference","model training","overfitting","neural network training"], text:"Machine learning systems fit parameters from examples or feedback to perform a task. Training adjusts parameters using an objective and optimization procedure; inference uses the resulting model to produce predictions on new inputs. Overfitting occurs when a model learns training-specific patterns that do not generalize well. Good evaluation uses held-out data and measures performance on tasks resembling real use." }
 ];
@@ -137,6 +138,19 @@ export function retrieveKnowledge(query) {
     .sort((a, b) => b.score - a.score);
   const best = ranked[0];
   if (!best || best.score < 0.42) return null;
+
+  // Prevent a single incidental body word (for example, "orange" in a sunset
+  // article) from winning an unrelated question. If the query does not match
+  // the document title or aliases, require at least two exact query-term hits
+  // in the body before returning it.
+  const queryTermsList = [...queryTerms(query)];
+  const bestSets = documentTermSets(best.document);
+  const hasTitleOrAliasMatch = queryTermsList.some((term) =>
+    fuzzyTermMatch(term, bestSets.title) || fuzzyTermMatch(term, bestSets.aliases)
+  );
+  const exactBodyHits = queryTermsList.filter((term) => bestSets.body.has(term));
+  if (!hasTitleOrAliasMatch && exactBodyHits.length < 2) return null;
+
   // Only combine two passages when the query genuinely matches both, avoiding unrelated dumps.
   const second = ranked[1];
   if (second && second.score >= 0.58 && best.score - second.score < 0.13) {
