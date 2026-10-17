@@ -15,6 +15,11 @@ test("performs basic arithmetic", () => {
   assert.equal(result.intent, "math");
 });
 
+test("supports arithmetic precedence, parentheses and natural operators", () => {
+  assert.match(generateReply({message:"calculate (12 + 8) times 3",conversationId:"math-extra"}).choices[0].message.content, /60/);
+  assert.match(generateReply({message:"what is 2^5",conversationId:"math-power"}).choices[0].message.content, /32/);
+});
+
 test("remembers a name in the same conversation", () => {
   const id = "memory-test";
   generateReply({ message: "my name is Alex", conversationId: id });
@@ -22,6 +27,26 @@ test("remembers a name in the same conversation", () => {
   assert.match(result.choices[0].message.content, /Alex/);
   assert.equal(result.intent, "memory_recall");
   resetConversation(id);
+});
+
+test("remembers interests and can recall them", () => {
+  const id = "likes-test";
+  generateReply({message:"I like Minecraft",conversationId:id});
+  const reply = generateReply({message:"what do I like?",conversationId:id});
+  assert.match(reply.choices[0].message.content,/Minecraft/);
+  resetConversation(id);
+});
+
+test("explains common API concepts from built-in knowledge", () => {
+  const result = generateReply({message:"What is an API?",conversationId:"knowledge-api"});
+  assert.match(result.choices[0].message.content,/software to communicate|software/i);
+  assert.equal(result.intent,"built_in_knowledge");
+});
+
+test("uses an empathetic response for emotional language", () => {
+  const result = generateReply({message:"I'm feeling sad today",conversationId:"empathy-test"});
+  assert.equal(result.intent,"empathy");
+  assert.match(result.choices[0].message.content,/sorry|listen/i);
 });
 
 test("does not pretend to know unsupported facts", () => {
