@@ -132,14 +132,21 @@ test("keeps deterministic arithmetic local even when a model is configured", asy
   assert.match(result.choices[0].message.content, /81/);
 });
 
-test("answers a repeated cat-name request instead of treating it as topic continuation", () => {
-  const id = "cat-name-repeat";
-  const first = generateReply({ message: "well i need a new cat anme - me", conversationId: id });
-  const second = generateReply({ message: "i need a new cat name - me", conversationId: id });
-  assert.equal(first.intent, "recommendation");
-  assert.equal(second.intent, "recommendation");
-  assert.match(second.choices[0].message.content, /Luna|Mochi|Milo/i);
-  assert.doesNotMatch(second.choices[0].message.content, /continuing the topic/i);
+test("does not assume a repeated request is a follow-up just because words overlap", () => {
+  const id = "repeat-request-general";
+  generateReply({ message: "I am planning a project", conversationId: id });
+  const result = generateReply({ message: "What is project management?", conversationId: id });
+  assert.equal(result.intent, "unknown_question");
+  assert.doesNotMatch(result.choices[0].message.content, /connect to what you said earlier/i);
+  resetConversation(id);
+});
+
+test("only uses conversation history when a follow-up clearly refers to it", () => {
+  const id = "explicit-follow-up-general";
+  generateReply({ message: "I am learning photography", conversationId: id });
+  const result = generateReply({ message: "What about that?", conversationId: id });
+  assert.equal(result.intent, "contextual_question");
+  assert.match(result.choices[0].message.content, /follow-up|earlier/i);
   resetConversation(id);
 });
 
