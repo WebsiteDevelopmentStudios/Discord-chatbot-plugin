@@ -216,7 +216,7 @@ function respond(text, state) {
   const explicitFollowUp = /^(?:and|also|but|so|then|what about|how about|tell me more|go on|continue|expand on|why is that|how so|what do you mean|can you elaborate|elaborate on)\b/i.test(normalized)
     || /\b(that|those|these|it|they|them|the same|the previous|the above)\b/i.test(normalized);
   if (explicitFollowUp && related && overlapScore(clean, related) > 0.12) {
-    return { text: \`I think this may connect to what you said earlier: “\${related.slice(0, 180)}”. What specifically would you like to know about it?\`, intent: "contextual_chat", confidence: 0.53 };
+    return { text: `I think this may connect to what you said earlier: “${related.slice(0, 180)}”. What specifically would you like to know about it?`, intent: "contextual_chat", confidence: 0.53 };
   }
 
   if (/\b(bored|just chatting|talk to me|let's talk|lets talk)\b/i.test(lower)) {
