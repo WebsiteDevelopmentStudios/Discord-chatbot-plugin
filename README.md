@@ -7,13 +7,13 @@ A free, model-independent conversational intelligence API prototype. The project
 - Generate API keys with `POST /v1/keys`.
 - Validate keys using `GET /v1/keys`.
 - Chat using `POST /v1/chat/completions`.
-- Basic greetings, capability and identity questions, simple arithmetic, and uncertainty-aware fallback answers.
-- Conversation-scoped facts such as a user's name, location, and likes.
-- Conversation history recall and optional recent-history context.
+- Natural greetings and small talk, simple empathy, capability and identity questions, arithmetic with operator precedence and parentheses, and uncertainty-aware fallback answers.
+- Conversation-scoped facts such as a user's name, location, likes/dislikes, job, and learning goals.
+- Conversation history recall, user-saved notes, a small built-in knowledge base for common API/web/programming concepts, and recent-history context.
 - Reset in-memory conversation state with `POST /v1/chat/reset`.
 - Automated tests with GitHub Actions.
 
-This is an early hand-built engine using language patterns and rules, not a trained large language model. It is intentionally honest when it cannot answer a question. Its general knowledge and reasoning are currently limited.
+This is an early hand-built engine using language patterns, deterministic arithmetic, a small hand-authored knowledge base, and conversation state—not a trained large language model. The engine reports uncertainty for questions outside its limited knowledge. It is intentionally honest when it cannot answer a question. Its general knowledge and reasoning are currently limited.
 
 ## Run locally
 
@@ -52,7 +52,7 @@ The response uses a simple chat-completion structure:
 ```json
 {
   "object": "chat.completion",
-  "model": "zoi-intelligence-0.1",
+  "model": "zoi-intelligence-0.2",
   "choices": [
     {
       "index": 0,
