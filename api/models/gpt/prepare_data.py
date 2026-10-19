@@ -40,15 +40,26 @@ def rows_oasst(limit: int) -> Iterable[str]:
     messages: dict[str, dict[str, Any]] = {}
     try:
         stream = dataset_stream("OpenAssistant/oasst1")
-        for item in stream:
-            if len(messages) >= max(limit * 8, 2000):
-                break
-            if str(item.get("lang", "en")).lower() not in {"en", "eng", "english"}:
-                continue
-            message_id = item.get("message_id")
-            if message_id is None:
-                continue
-            messages[str(message_id)] = item
+        iterator = iter(stream)
+        try:
+            for item in iterator:
+                if len(messages) >= max(limit * 8, 2000):
+                    break
+                if str(item.get("lang", "en")).lower() not in {"en", "eng", "english"}:
+                    continue
+                message_id = item.get("message_id")
+                if message_id is None:
+                    continue
+                messages[str(message_id)] = item
+        finally:
+            # IterableDataset uses a background HTTP/parquet iterator. Close it
+            # explicitly when we stop after a bounded sample; otherwise some
+            # versions leave downloader threads alive during interpreter exit.
+            close = getattr(iterator, "close", None)
+            if callable(close):
+                close()
+            del iterator
+            del stream
     except Exception as exc:
         raise RuntimeError(
             "Could not stream OpenAssistant/oasst1. Check network access and the "
@@ -84,15 +95,24 @@ def rows_oasst(limit: int) -> Iterable[str]:
 def rows_tinystories(limit: int) -> Iterable[str]:
     try:
         stream = dataset_stream("roneneldan/TinyStories")
+        iterator = iter(stream)
         emitted = 0
-        for item in stream:
-            text = clean_text(item.get("text"))
-            if len(text) < 40:
-                continue
-            yield text
-            emitted += 1
-            if emitted >= limit:
-                return
+        try:
+            for item in iterator:
+                text = clean_text(item.get("text"))
+                if len(text) < 40:
+                    continue
+                yield text
+                emitted += 1
+                if emitted >= limit:
+                    return
+        finally:
+            # Ensure bounded sampling shuts down the stream's downloader.
+            close = getattr(iterator, "close", None)
+            if callable(close):
+                close()
+            del iterator
+            del stream
     except Exception as exc:
         raise RuntimeError("Could not stream roneneldan/TinyStories.") from exc
     raise RuntimeError("TinyStories stream ended before any usable stories were found.")
