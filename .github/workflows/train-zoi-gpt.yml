@@ -1,6 +1,12 @@
 name: Prepare and train Zoi GPT
 
 on:
+  push:
+    branches:
+      - feature/zoi-gpt-training-pipeline
+    paths:
+      - "api/models/gpt/**"
+      - ".github/workflows/train-zoi-gpt.yml"
   workflow_dispatch:
     inputs:
       records_per_source:
@@ -22,8 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      RECORDS_PER_SOURCE: ${{ inputs.records_per_source }}
-      TRAINING_STEPS: ${{ inputs.training_steps }}
+      RECORDS_PER_SOURCE: ${{ inputs.records_per_source || '1000' }}
+      TRAINING_STEPS: ${{ inputs.training_steps || '500' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
