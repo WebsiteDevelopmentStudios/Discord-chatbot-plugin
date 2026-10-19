@@ -101,7 +101,7 @@ function scoreDocument(query, document) {
   const titleTerms = cachedTerms.title;
   const aliasTerms = cachedTerms.aliases;
   const bodyTerms = cachedTerms.body;
-  const normalizedQuery = " " + normalizeForUnderstanding(query).replace(/[^\\p{L}\\p{N}]+/gu, " ").trim() + " ";
+  const normalizedQuery = " " + normalizeForUnderstanding(query).replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ";
   let totalWeight = 0, matchedWeight = 0, titleWeight = 0, aliasWeight = 0, bodyWeight = 0;
   for (const term of q) {
     const documentFrequency = DOCUMENTS.reduce((count, candidate) => {
