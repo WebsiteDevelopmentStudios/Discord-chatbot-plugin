@@ -98,13 +98,19 @@ input:focus,textarea:focus{border-color:#a3a5c8;box-shadow:0 0 0 3px #a3a5c815}
       <p class="hint">Responses and errors appear in the response inspector below the chat.</p>
     </section>
     <section class="panel">
-      <div class="panel-head"><h3>Train Zoi models</h3><span class="step">04 / TRAIN</span></div>
+      <div class="panel-head"><h3>Train baseline models</h3><span class="step">04 / TRAIN</span></div>
       <div class="field"><label for="trainingToken">Training access token</label><input id="trainingToken" type="password" autocomplete="off" spellcheck="false" placeholder="Enter the Render training token"></div>
       <button id="trainModels" style="width:100%">Train all 3 models</button>
       <div class="train-progress" role="progressbar" aria-label="Model training progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="trainProgress"><div class="train-progress-fill" id="trainProgressFill"></div></div>
-      <div class="train-state" id="trainState" role="status">Training runs on the Render service. Your token is kept in this page only.</div>
+      <div class="train-state" id="trainState" role="status">This button trains Zoi's existing tiny classifier experiments on Render; it does not train the new GPT.</div>
       <div class="learned-results" id="learnedResults"></div>
-      <p class="hint">At 100%, review the model labels, sample predictions, vocabulary sizes, and training loss. These are small experimental networks, not a full GPT model.</p>
+      <p class="hint">These are small baseline experiments, separate from the GPT training workflow below.</p>
+    <section class="panel">
+      <div class="panel-head"><h3>Train the GPT experiment</h3><span class="step">05 / GPT</span></div>
+      <p class="hint" style="margin-top:0">Prepare a capped sample of OpenAssistant, TinyStories, and Wikipedia, then train a small GPT-style model from random weights. This runs in GitHub Actions and does not change the live API.</p>
+      <a href="https://github.com/WebsiteDevelopmentStudios/Discord-chatbot-plugin/actions/workflows/train-zoi-gpt.yml" target="_blank" rel="noreferrer" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:14px;padding:11px 13px;border-radius:10px;background:#c0bddc;color:#151726;font-size:12px;font-weight:750;text-decoration:none">Open GPT training workflow ↗</a>
+      <p class="hint">The first run uses up to 1,000 records per source and 500 training steps. It uploads a temporary checkpoint artifact for testing.</p>
+    </section>
     </section>
   </aside>
   <main class="panel chat-panel">
