@@ -44,6 +44,9 @@ jobs:
       - name: Train small GPT from scratch
         run: |
           python api/models/gpt/train.py train --steps "$TRAINING_STEPS" --cpu
+      - name: Smoke-test checkpoint generation
+        run: |
+          python api/models/gpt/train.py generate "User: Hello.\nAssistant:" --max-new-tokens 40 --cpu
       - name: Upload trained checkpoint
         uses: actions/upload-artifact@v4
         with:
