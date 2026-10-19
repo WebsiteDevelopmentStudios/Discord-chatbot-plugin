@@ -27,7 +27,7 @@ The script streams capped samples from:
 
 - OpenAssistant OASST1: English user/assistant parent-linked examples.
 - TinyStories: short stories for language-pattern learning.
-- Wikimedia Wikipedia English snapshot: article text for broad factual-language exposure.
+- English Wikipedia extracts sampled through the public MediaWiki API: article text for broad factual-language exposure.
 
 It writes `api/models/gpt/data/train.jsonl`, which is ignored by Git because it contains downloaded source text. The default is at most 1,000 usable records per source. Increase the cap gradually after checking disk, RAM, and training time. This is a sample, not a complete download of any dataset.
 
@@ -44,7 +44,7 @@ The training script logs training and validation next-token loss. Lower validati
 
 ### GitHub Actions experiment
 
-The workflow `.github/workflows/train-zoi-gpt.yml` is manual-only. In GitHub, open **Actions → Prepare and train Zoi GPT → Run workflow**, select this branch, and choose the record cap and training steps. It prepares a bounded sample, trains on CPU, and uploads the resulting checkpoint as a short-lived artifact. It does not deploy the model or change the live API.
+The workflow `.github/workflows/train-zoi-gpt.yml` is manual-only. In GitHub, open **Actions → Prepare and train Zoi GPT → Run workflow**, select this branch, and choose the record cap and training steps. It prepares a bounded sample, trains on CPU, and uploads the resulting checkpoint as a short-lived artifact. Wikipedia is sampled through its public API so the script doesn't open a multi-gigabyte dump. It does not deploy the model or change the live API.
 
 ### Licensing and data handling
 
