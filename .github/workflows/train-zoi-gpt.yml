@@ -21,6 +21,9 @@ jobs:
   train-gpt:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      RECORDS_PER_SOURCE: ${{ inputs.records_per_source }}
+      TRAINING_STEPS: ${{ inputs.training_steps }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -37,16 +40,14 @@ jobs:
           python -m pip install "datasets>=3.0,<5"
       - name: Stream and prepare the three datasets
         run: |
-          python api/models/gpt/prepare_data.py --per-source "${{ inputs.records_per_source }}"
+          python api/models/gpt/prepare_data.py --per-source "$RECORDS_PER_SOURCE"
       - name: Train small GPT from scratch
         run: |
-          python api/models/gpt/train.py train --steps "${{ inputs.training_steps }}" --cpu
-      - name: Upload prepared data and trained checkpoint
+          python api/models/gpt/train.py train --steps "$TRAINING_STEPS" --cpu
+      - name: Upload trained checkpoint
         uses: actions/upload-artifact@v4
         with:
-          name: zoi-gpt-training-run
-          path: |
-            api/models/gpt/data/train.jsonl
-            api/models/gpt/checkpoints/zoi-gpt.pt
+          name: zoi-gpt-checkpoint
+          path: api/models/gpt/checkpoints/zoi-gpt.pt
           if-no-files-found: error
           retention-days: 7
