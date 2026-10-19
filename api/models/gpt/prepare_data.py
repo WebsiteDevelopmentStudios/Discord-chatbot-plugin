@@ -13,7 +13,6 @@ import re
 from pathlib import Path
 from typing import Any, Iterable
 
-from datasets import load_dataset
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_OUTPUT = HERE / "data" / "train.jsonl"
