@@ -163,6 +163,31 @@ function creativeSuggestion(text) {
   }
   return null;
 }
+function comparisonAnswer(text) {
+  const normalized = normalizeForUnderstanding(text).toLowerCase();
+  let left = "", right = "";
+  const patterns = [
+    /(?:what is the )?difference between (.+?) and (.+?)(?:[?.!]|$)/i,
+    /compare (.+?) (?:with|and|versus|vs\.?|to) (.+?)(?:[?.!]|$)/i,
+    /(.+?) (?:versus|vs\.?|compared with|compared to) (.+?)(?:[?.!]|$)/i
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match) { left = match[1].trim(); right = match[2].trim(); break; }
+  }
+  if (!left || !right || left.length > 100 || right.length > 100) return null;
+
+  const first = retrieveKnowledge(left);
+  const second = retrieveKnowledge(right);
+  if (!first || !second || first.topic === second.topic) return null;
+  if (first.score < 0.48 || second.score < 0.48) return null;
+  return {
+    text: `**${left}:** ${first.text}\n\n**${right}:** ${second.text}\n\n**Main difference:** These are distinct topics. The first explanation describes ${left}; the second describes ${right}. Compare their purpose and how each is used to decide which matters for your situation.`,
+    intent: "knowledge_comparison",
+    confidence: Math.min(0.78, (first.score + second.score) / 2)
+  };
+}
+
 function respond(text, state) {
   const clean = text.trim(), normalized = normalizeForUnderstanding(normalize(clean)), lower = normalizeForUnderstanding(clean);
   const math = calculate(clean);
@@ -231,6 +256,9 @@ function respond(text, state) {
   // article, but the user wants suggestions rather than a definition.
   const creative = creativeSuggestion(clean);
   if (creative) return creative;
+
+  const comparison = comparisonAnswer(clean);
+  if (comparison) return comparison;
 
   const known = knowledgeAnswer(clean);
   if (known) {
