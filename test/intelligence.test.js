@@ -168,3 +168,15 @@ test("retrieves expanded offline knowledge about computer memory", () => {
   assert.match(result.choices[0].message.content, /temporary working memory|SSD|storage/i);
   assert.equal(result.intent, "built_in_knowledge");
 });
+
+test("gives plant-name ideas instead of an unrelated science definition", () => {
+  const first = generateReply({ message: "give me some names for a plant", conversationId: "plant-names-test" });
+  assert.equal(first.intent, "creative_suggestions");
+  assert.match(first.choices[0].message.content, /Sprout|Clover|Moss|Fern|Basil/i);
+  assert.doesNotMatch(first.choices[0].message.content, /photosynthesis|carbon dioxide/i);
+
+  const followUp = generateReply({ message: "i need a name for my plants", conversationId: "plant-names-test" });
+  assert.equal(followUp.intent, "creative_suggestions");
+  assert.match(followUp.choices[0].message.content, /Sprout|Clover|Moss|Fern|Basil/i);
+  resetConversation("plant-names-test");
+});
