@@ -1,0 +1,62 @@
+name: Prepare and train Zoi GPT
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "api/models/gpt/**"
+      - ".github/workflows/train-zoi-gpt.yml"
+  workflow_dispatch:
+    inputs:
+      records_per_source:
+        description: Maximum records to stream from each dataset
+        required: true
+        default: "1000"
+        type: string
+      training_steps:
+        description: Number of GPT training steps
+        required: true
+        default: "500"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  train-gpt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RECORDS_PER_SOURCE: ${{ inputs.records_per_source || '1000' }}
+      TRAINING_STEPS: ${{ inputs.training_steps || '500' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: api/models/gpt/requirements.txt
+      - name: Install CPU training dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install "datasets>=3.0,<5"
+      - name: Stream and prepare the three datasets
+        run: |
+          python api/models/gpt/prepare_data.py --per-source "$RECORDS_PER_SOURCE"
+      - name: Train small GPT from scratch
+        run: |
+          python api/models/gpt/train.py train --steps "$TRAINING_STEPS" --cpu
+      - name: Smoke-test checkpoint generation
+        run: |
+          python api/models/gpt/train.py generate "User: Hello.\nAssistant:" --max-new-tokens 40 --cpu
+      - name: Upload trained checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: zoi-gpt-checkpoint
+          path: api/models/gpt/checkpoints/zoi-gpt.pt
+          if-no-files-found: error
+          retention-days: 7
