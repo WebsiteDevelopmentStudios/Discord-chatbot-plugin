@@ -99,27 +99,55 @@ def rows_tinystories(limit: int) -> Iterable[str]:
 
 
 def rows_wikipedia(limit: int) -> Iterable[str]:
-    # The English Wikimedia snapshot is streamed so we do not download the full dump.
-    try:
-        stream = dataset_stream("wikimedia/wikipedia", config="20231101.en")
-        emitted = 0
-        for item in stream:
-            title = clean_text(item.get("title"), 300)
-            text = clean_text(item.get("text"))
-            if len(text) < 100:
+    """Fetch short English Wikipedia extracts through its public MediaWiki API.
+
+    Avoids opening a large multi-shard parquet stream just to take a small sample.
+    The request rate is deliberately modest and every request has a timeout.
+    """
+    import time
+    import urllib.parse
+    import urllib.request
+
+    emitted = 0
+    seen_titles: set[str] = set()
+    while emitted < limit:
+        batch = min(10, limit - emitted)
+        params = urllib.parse.urlencode({
+            "action": "query",
+            "generator": "random",
+            "grnnamespace": "0",
+            "grnlimit": str(batch),
+            "prop": "extracts",
+            "explaintext": "1",
+            "exchars": str(MAX_TEXT_CHARS),
+            "format": "json",
+            "formatversion": "2",
+        })
+        request = urllib.request.Request(
+            "https://en.wikipedia.org/w/api.php?" + params,
+            headers={"User-Agent": "ZoiIntelligenceTraining/1.0 (open-source educational dataset sampler)"}
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=25) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            raise RuntimeError("Could not fetch English Wikipedia extracts from the MediaWiki API.") from exc
+
+        pages = payload.get("query", {}).get("pages", [])
+        if not pages:
+            raise RuntimeError("Wikipedia API returned no random pages.")
+        for page in pages:
+            title = clean_text(page.get("title"), 300)
+            text = clean_text(page.get("extract"))
+            title_key = title.casefold()
+            if not title or title_key in seen_titles or len(text) < 100:
                 continue
-            if title:
-                text = f"Article: {title}\n{text}"
-            yield text
+            seen_titles.add(title_key)
+            yield f"Article: {title}\n{text}"
             emitted += 1
             if emitted >= limit:
                 return
-    except Exception as exc:
-        raise RuntimeError(
-            "Could not stream wikimedia/wikipedia config 20231101.en. "
-            "Check whether the upstream dataset/config has changed."
-        ) from exc
-    raise RuntimeError("Wikipedia stream ended before any usable articles were found.")
+        time.sleep(0.15)
 
 
 def prepare(output: Path, per_source: int) -> dict[str, Any]:
