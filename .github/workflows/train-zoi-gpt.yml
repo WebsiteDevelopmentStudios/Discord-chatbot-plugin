@@ -43,7 +43,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install "datasets>=3.0,<5"
+          python -m pip install "datasets>=3.0,<5" "huggingface-hub<1.0"
       - name: Stream and prepare the three datasets
         run: |
           python api/models/gpt/prepare_data.py --per-source "$RECORDS_PER_SOURCE"
