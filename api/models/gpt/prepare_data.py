@@ -125,6 +125,7 @@ def rows_wikipedia(limit: int) -> Iterable[str]:
     The request rate is deliberately modest and every request has a timeout.
     """
     import time
+    import urllib.error
     import urllib.parse
     import urllib.request
 
@@ -147,11 +148,31 @@ def rows_wikipedia(limit: int) -> Iterable[str]:
             "https://en.wikipedia.org/w/api.php?" + params,
             headers={"User-Agent": "ZoiIntelligenceTraining/1.0 (open-source educational dataset sampler)"}
         )
-        try:
-            with urllib.request.urlopen(request, timeout=25) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-        except Exception as exc:
-            raise RuntimeError("Could not fetch English Wikipedia extracts from the MediaWiki API.") from exc
+        # Wikimedia applies request throttling. Retry transient 429/5xx
+        # responses and honor Retry-After instead of failing the entire training run.
+        payload = None
+        for attempt in range(6):
+            try:
+                with urllib.request.urlopen(request, timeout=25) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code not in {429, 500, 502, 503, 504} or attempt == 5:
+                    raise RuntimeError(
+                        f"Wikipedia API request failed with HTTP {exc.code} after {attempt + 1} attempt(s)."
+                    ) from exc
+                retry_after = exc.headers.get("Retry-After", "")
+                try:
+                    delay = float(retry_after)
+                except (TypeError, ValueError):
+                    delay = min(60.0, 2.0 ** attempt)
+                time.sleep(max(1.0, min(delay, 60.0)))
+            except Exception as exc:
+                if attempt == 5:
+                    raise RuntimeError("Could not fetch English Wikipedia extracts from the MediaWiki API.") from exc
+                time.sleep(min(30.0, 2.0 ** attempt))
+        if payload is None:
+            raise RuntimeError("Wikipedia API did not return a response after retries.")
 
         pages = payload.get("query", {}).get("pages", [])
         if not pages:
@@ -167,7 +188,7 @@ def rows_wikipedia(limit: int) -> Iterable[str]:
             emitted += 1
             if emitted >= limit:
                 return
-        time.sleep(0.15)
+        time.sleep(1.0)
 
 
 def prepare(output: Path, per_source: int) -> dict[str, Any]:
