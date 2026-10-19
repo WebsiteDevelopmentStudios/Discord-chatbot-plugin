@@ -180,3 +180,14 @@ test("gives plant-name ideas instead of an unrelated science definition", () => 
   assert.match(followUp.choices[0].message.content, /Sprout|Clover|Moss|Fern|Basil/i);
   resetConversation("plant-names-test");
 });
+
+test("compares two separately supported topics using offline knowledge", () => {
+  const result = generateReply({
+    message: "What is the difference between Java and JavaScript?",
+    conversationId: "comparison-java-test"
+  });
+  assert.equal(result.intent, "knowledge_comparison");
+  assert.match(result.choices[0].message.content, /Java/);
+  assert.match(result.choices[0].message.content, /JavaScript/);
+  assert.match(result.choices[0].message.content, /Main difference/i);
+});
