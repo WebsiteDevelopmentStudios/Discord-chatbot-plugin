@@ -163,7 +163,7 @@ export async function handleRequest(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", model: getModelStatus() });
+      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus() });
     }
 
     if ((req.method === "POST" && url.pathname === "/v1/train/start") || (req.method === "GET" && url.pathname === "/v1/train/status")) {
