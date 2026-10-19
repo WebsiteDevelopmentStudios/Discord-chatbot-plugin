@@ -1,0 +1,62 @@
+name: Verify tests and live Render deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-deploy-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out exact commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run automated tests
+        run: npm test
+
+      - name: Wait for Render to run this exact commit
+        env:
+          HEALTH_URL: https://discord-chatbot-intelligence-api.onrender.com/health
+          EXPECTED_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -u
+          echo "Waiting for Render health endpoint to report commit ${EXPECTED_COMMIT}."
+          for attempt in $(seq 1 36); do
+            response="$(curl --silent --show-error --max-time 10 "${HEALTH_URL}" 2>/dev/null || true)"
+            if [ -n "${response}" ]; then
+              actual="$(node -e 'try { const d=JSON.parse(process.argv[1]); process.stdout.write(String(d.commit || "")); } catch {}' "${response}")"
+              ok="$(node -e 'try { const d=JSON.parse(process.argv[1]); process.stdout.write(d.ok === true ? "yes" : "no"); } catch {}' "${response}")"
+              if [ "${ok}" = "yes" ] && [ "${actual}" = "${EXPECTED_COMMIT}" ]; then
+                echo "Deployment verified: Render is serving ${actual}."
+                exit 0
+              fi
+              echo "Attempt ${attempt}/36: endpoint responded, deployed commit is '${actual:-unknown}'."
+            else
+              echo "Attempt ${attempt}/36: health endpoint did not respond."
+            fi
+            sleep 10
+          done
+          echo "::error::Render did not become healthy on the exact commit ${EXPECTED_COMMIT} within 6 minutes."
+          echo "Check Render build logs and runtime logs for the failed or stuck deployment."
+          exit 1
