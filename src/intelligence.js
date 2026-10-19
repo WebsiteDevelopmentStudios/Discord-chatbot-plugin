@@ -140,6 +140,7 @@ function knowledgeAnswer(text) {
 function creativeSuggestion(text) {
   const value = normalizeForUnderstanding(text).toLowerCase();
   const animalNames = [
+    { pattern: /\b(plant|plants|houseplant|houseplants|flower|flowers|succulent|succulents|cactus|cacti)\b/, names: ["Sprout", "Clover", "Moss", "Fern", "Basil", "Poppy", "Ivy", "Sage", "Petal", "Juniper", "Bean", "Daisy", "Olive", "Pistachio", "Pickle"] },
     { pattern: /\b(cat|kitten|kitty)\b/, names: ["Luna", "Mochi", "Milo", "Nala", "Oliver", "Pepper", "Cleo", "Biscuit", "Shadow", "Pumpkin", "Misty", "Bean"] },
     { pattern: /\b(dog|puppy)\b/, names: ["Luna", "Max", "Charlie", "Daisy", "Milo", "Scout", "Coco", "Teddy", "Maple", "Buddy", "Pepper", "Riley"] },
     { pattern: /\b(rabbit|bunny)\b/, names: ["Clover", "Thumper", "Hazel", "Oreo", "Mochi", "Poppy", "Cocoa", "Daisy", "Bunbun", "Maple"] },
@@ -225,12 +226,16 @@ function respond(text, state) {
   const noted = answerFromNotes(clean, state);
   if (noted && /\b(what|which|remind|remember|tell me)\b/i.test(lower)) return { text: `You asked me to remember: “${noted}”.`, intent: "memory_recall", confidence: 0.83 };
 
+  // Handle clear creative requests before reference retrieval. A prompt like
+  // "give me names for a plant" can contain topic words that match a science
+  // article, but the user wants suggestions rather than a definition.
+  const creative = creativeSuggestion(clean);
+  if (creative) return creative;
+
   const known = knowledgeAnswer(clean);
   if (known) {
     return { text: known, intent: "built_in_knowledge", confidence: 0.79 };
   }
-  const creative = creativeSuggestion(clean);
-  if (creative) return creative;
 
   if (/\b(yes|yeah|yep|no|nope|okay|ok|sure|maybe|i think so|not really)\b/i.test(normalized)) {
     const previous = [...state.history].reverse().find((entry) => entry.role === "assistant");
