@@ -119,76 +119,33 @@ def rows_tinystories(limit: int) -> Iterable[str]:
 
 
 def rows_wikipedia(limit: int) -> Iterable[str]:
-    """Fetch short English Wikipedia extracts through its public MediaWiki API.
+    """Stream a bounded sample of English Wikipedia articles from Hugging Face."""
+    try:
+        stream = dataset_stream("wikimedia/wikipedia", config="20231101.en")
+        iterator = iter(stream)
+        emitted = 0
+        try:
+            for item in iterator:
+                title = clean_text(item.get("title"), 300)
+                article = clean_text(item.get("text"))
+                if not title or len(article) < 100:
+                    continue
+                yield f"Article: {title}\n{article}"
+                emitted += 1
+                if emitted >= limit:
+                    return
+        finally:
+            # Close the bounded stream before Python finalizes downloader threads.
+            close = getattr(iterator, "close", None)
+            if callable(close):
+                close()
+            del iterator
+            del stream
+    except Exception as exc:
+        raise RuntimeError("Could not stream English Wikipedia articles from wikimedia/wikipedia.") from exc
 
-    Avoids opening a large multi-shard parquet stream just to take a small sample.
-    The request rate is deliberately modest and every request has a timeout.
-    """
-    import time
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-
-    emitted = 0
-    seen_titles: set[str] = set()
-    while emitted < limit:
-        batch = min(10, limit - emitted)
-        params = urllib.parse.urlencode({
-            "action": "query",
-            "generator": "random",
-            "grnnamespace": "0",
-            "grnlimit": str(batch),
-            "prop": "extracts",
-            "explaintext": "1",
-            "exchars": str(MAX_TEXT_CHARS),
-            "format": "json",
-            "formatversion": "2",
-        })
-        request = urllib.request.Request(
-            "https://en.wikipedia.org/w/api.php?" + params,
-            headers={"User-Agent": "ZoiIntelligenceTraining/1.0 (open-source educational dataset sampler)"}
-        )
-        # Wikimedia applies request throttling. Retry transient 429/5xx
-        # responses and honor Retry-After instead of failing the entire training run.
-        payload = None
-        for attempt in range(6):
-            try:
-                with urllib.request.urlopen(request, timeout=25) as response:
-                    payload = json.loads(response.read().decode("utf-8"))
-                break
-            except urllib.error.HTTPError as exc:
-                if exc.code not in {429, 500, 502, 503, 504} or attempt == 5:
-                    raise RuntimeError(
-                        f"Wikipedia API request failed with HTTP {exc.code} after {attempt + 1} attempt(s)."
-                    ) from exc
-                retry_after = exc.headers.get("Retry-After", "")
-                try:
-                    delay = float(retry_after)
-                except (TypeError, ValueError):
-                    delay = min(60.0, 2.0 ** attempt)
-                time.sleep(max(1.0, min(delay, 60.0)))
-            except Exception as exc:
-                if attempt == 5:
-                    raise RuntimeError("Could not fetch English Wikipedia extracts from the MediaWiki API.") from exc
-                time.sleep(min(30.0, 2.0 ** attempt))
-        if payload is None:
-            raise RuntimeError("Wikipedia API did not return a response after retries.")
-
-        pages = payload.get("query", {}).get("pages", [])
-        if not pages:
-            raise RuntimeError("Wikipedia API returned no random pages.")
-        for page in pages:
-            title = clean_text(page.get("title"), 300)
-            text = clean_text(page.get("extract"))
-            title_key = title.casefold()
-            if not title or title_key in seen_titles or len(text) < 100:
-                continue
-            seen_titles.add(title_key)
-            yield f"Article: {title}\n{text}"
-            emitted += 1
-            if emitted >= limit:
-                return
-        time.sleep(1.0)
+    if emitted == 0:
+        raise RuntimeError("Wikipedia stream ended before any usable articles were found.")
 
 
 def prepare(output: Path, per_source: int) -> dict[str, Any]:
