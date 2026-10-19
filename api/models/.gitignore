@@ -1,6 +1,10 @@
 # Trained artifacts are generated locally; training data and scripts stay in Git.
 **/artifacts/*
 !**/artifacts/.gitkeep
+gpt/data/*
+!gpt/data/.gitkeep
+gpt/checkpoints/*
+!gpt/checkpoints/.gitkeep
 __pycache__/
 *.py[cod]
 .venv/
