@@ -164,7 +164,7 @@ function creativeSuggestion(text) {
   return null;
 }
 function comparisonAnswer(text) {
-  const normalized = normalizeForUnderstanding(text).toLowerCase();
+  const normalized = String(text).toLowerCase().replace(/[’‘]/g, "'").trim();
   let left = "", right = "";
   const patterns = [
     /(?:what is the )?difference between (.+?) and (.+?)(?:[?.!]|$)/i,
