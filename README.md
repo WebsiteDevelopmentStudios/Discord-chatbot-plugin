@@ -152,3 +152,29 @@ curl -X POST http://localhost:3000/v1/chat/reset \
 - Do not send sensitive personal data to this prototype.
 - GitHub Actions runs tests; it does not deploy the API or generate a production key.
 - No model is called unless an operator configures one. A configured provider may charge for usage; users must check its pricing and terms.
+
+## Zoi's two trained LoRA adapters (Colab + Render)
+
+This repository now supports assigning each generated API key to one adapter:
+
+- `zoi` — the original adapter at `/content/drive/MyDrive/Zoi/llama31-8b-zoi`.
+- `zoi-unfiltered` — the separate adapter at `/content/drive/MyDrive/Zoi/llama31-8b-zoi-unfiltered`.
+
+The existing Render Node API remains the public entry point and continues to hash public API keys. The selected adapter is saved with each key; chat requests cannot override that assignment by sending a different `model` field. The private inference worker accepts only requests with `ZOI_INFERENCE_TOKEN`.
+
+### Configure the free experimental inference worker
+
+Follow [inference/COLAB_SETUP.md](inference/COLAB_SETUP.md) to load the existing Drive adapters in a Google Colab GPU runtime. This loads the shared `meta-llama/Llama-3.1-8B-Instruct` base in 4-bit mode and loads both PEFT adapters without retraining.
+
+Set these variables on the **Render API service**, not in the public website:
+
+- `ZOI_INFERENCE_URL` — current private HTTPS tunnel base URL pointing to the Colab worker.
+- `ZOI_INFERENCE_TOKEN` — the same random secret set in the Colab runtime.
+- `ZOI_INFERENCE_TIMEOUT_MS=120000` — request timeout (the service clamps it to 5–180 seconds).
+
+The public page lets you choose an adapter when generating a new key. Existing keys without a stored model assignment continue to use `zoi`. When inference environment variables are absent, the API retains the legacy local rules/retrieval engine and reports `inferenceConfigured: false`; it does not claim the trained adapter was used. When the worker is configured but unavailable, chat returns HTTP 503 rather than silently pretending inference succeeded.
+
+### Free-tier limitation you must know
+
+This is a $0 best-effort experiment, not guaranteed 24/7 hosting. A free Colab runtime can disconnect or lose GPU access. An HTTP request cannot wake a terminated Colab runtime; restart the notebook and update the Render tunnel URL if it changes. Render's filesystem may also be ephemeral unless durable storage is configured, so do not assume JSON-stored API keys survive every redeploy. For durable public production service, use persistent storage and an always-on inference host.
+

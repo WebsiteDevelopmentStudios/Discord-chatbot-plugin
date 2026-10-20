@@ -163,7 +163,7 @@ export async function handleRequest(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus() });
+      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus(), inference: { configured: Boolean(process.env.ZOI_INFERENCE_URL && process.env.ZOI_INFERENCE_TOKEN), adapters: ["zoi", "zoi-unfiltered"] } });
     }
 
     if ((req.method === "POST" && url.pathname === "/v1/train/start") || (req.method === "GET" && url.pathname === "/v1/train/status")) {
@@ -184,9 +184,14 @@ export async function handleRequest(req, res) {
       const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "My application";
       const key = keyPrefix + randomBytes(32).toString("base64url");
       const keys = await loadKeys();
+      const requestedModel = typeof body.model === "string" ? body.model : "zoi";
+      if (!["zoi", "zoi-unfiltered"].includes(requestedModel)) {
+        return send(res, 400, { error: "invalid_model", message: "model must be 'zoi' or 'zoi-unfiltered'." });
+      }
       keys.push({
         id: randomBytes(8).toString("hex"),
         label: label || "My application",
+        model: requestedModel,
         keyHash: hashKey(key),
         createdAt: new Date().toISOString(),
         status: "active"
@@ -196,6 +201,7 @@ export async function handleRequest(req, res) {
         key,
         id: keys.at(-1).id,
         label: keys.at(-1).label,
+        model: keys.at(-1).model,
         warning: "Copy this key now. It is only shown once; the server stores its SHA-256 hash."
       });
     }
@@ -207,7 +213,7 @@ export async function handleRequest(req, res) {
       const keys = await loadKeys();
       const record = keys.find((entry) => entry.status === "active" && entry.keyHash === hashKey(suppliedKey));
       if (!record) return send(res, 401, { error: "invalid_api_key" });
-      return send(res, 200, { valid: true, keyId: record.id, label: record.label, createdAt: record.createdAt });
+      return send(res, 200, { valid: true, keyId: record.id, label: record.label, model: record.model || "zoi", createdAt: record.createdAt });
     }
 
     if (req.method === "POST" && url.pathname === "/v1/learning/feedback") {
@@ -269,7 +275,49 @@ export async function handleRequest(req, res) {
       // Scope conversations to their API key so one customer's memory cannot leak to another.
       const conversationId = `${record.id}:${clientConversationId}`;
       const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
-      const completion = await generateReplyAsync({ message, conversationId, history });
+      // Adapter assignment is stored with the API key. Never trust a caller-supplied
+      // model field: the public request cannot switch a regular key to the unfiltered adapter.
+      const assignedModel = record.model === "zoi-unfiltered" ? "zoi-unfiltered" : "zoi";
+      const inferenceUrl = (process.env.ZOI_INFERENCE_URL || "").trim().replace(/\/+$/, "");
+      const inferenceToken = (process.env.ZOI_INFERENCE_TOKEN || "").trim();
+      let completion;
+      if (inferenceUrl && inferenceToken) {
+        try {
+          const response = await fetch(`${inferenceUrl}/v1/chat/completions`, {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: `Bearer ${inferenceToken}` },
+            body: JSON.stringify({ message, history, model: assignedModel }),
+            signal: AbortSignal.timeout(Math.min(180_000, Math.max(5_000, Number(process.env.ZOI_INFERENCE_TIMEOUT_MS || 120_000))))
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            const error = new Error("The inference worker could not complete this request.");
+            error.status = response.status === 429 ? 429 : 503;
+            throw error;
+          }
+          if (typeof result.choices?.[0]?.message?.content !== "string") {
+            const error = new Error("The inference worker returned an invalid response.");
+            error.status = 503;
+            throw error;
+          }
+          completion = {
+            object: "chat.completion",
+            model: assignedModel,
+            choices: result.choices,
+            engine: "peft-adapter",
+            providerStatus: { configured: true, provider: "zoi-inference", model: assignedModel }
+          };
+        } catch (error) {
+          return send(res, error.status || 503, {
+            error: "inference_unavailable",
+            message: "The trained-model worker is unavailable or timed out. Start the Colab inference runtime and try again."
+          });
+        }
+      } else {
+        completion = await generateReplyAsync({ message, conversationId, history });
+        completion.modelAssignment = assignedModel;
+        completion.inferenceConfigured = false;
+      }
       if (body.learnFromConversation === true && completion.intent === "unknown_question") {
         try {
           await callLearningStore("/v1/candidates", {
