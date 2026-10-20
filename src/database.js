@@ -5,7 +5,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const databasePath = resolve(process.env.DATABASE_PATH || resolve(here, "../data/users.db"));
+const persistentDir = resolve(process.env.PERSISTENT_DIR || resolve(here, "../data"));
+const databasePath = resolve(process.env.DATABASE_PATH || resolve(persistentDir, "users.db"));
 mkdirSync(dirname(databasePath), { recursive: true });
 export const db = new Database(databasePath);
 db.pragma("journal_mode = WAL");
