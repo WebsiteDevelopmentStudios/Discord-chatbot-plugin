@@ -12,6 +12,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "word-list": "^4.1.0"
+    "word-list": "^4.1.0",
+    "better-sqlite3": "^12.2.0"
   }
 }
