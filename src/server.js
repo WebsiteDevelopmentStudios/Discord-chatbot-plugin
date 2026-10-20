@@ -5,7 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateReplyAsync, resetConversation } from "./intelligence.js";
+import { resetConversation } from "./intelligence.js";
 import { loadKeys, saveKeys } from "./database.js";
 import { handleDashboardRequest } from "./dashboard.js";
 
