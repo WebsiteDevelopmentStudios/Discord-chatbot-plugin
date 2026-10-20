@@ -155,6 +155,12 @@ export async function handleRequest(req, res) {
   try {
     if (await handleDashboardRequest(req, res, url, { send, readJson, allowKeyCreation })) return;
 
+    if (req.method === "GET" && url.pathname === "/config.js") {
+      const config = await readFile(resolve(here, "../public/config.js"), "utf8");
+      res.writeHead(200, { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" });
+      return res.end(config);
+    }
+
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
       const page = await readFile(resolve(here, "../public/index.html"), "utf8");
       res.writeHead(200, {
