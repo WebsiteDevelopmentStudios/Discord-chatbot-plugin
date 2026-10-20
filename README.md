@@ -1,180 +1,64 @@
-# Zoi Intelligence API
+# Zoi Custom Model Dashboard
 
-A hybrid conversational intelligence API for any developer or application. Mallow Bot is only one possible test client. It combines a lightweight local rules/retrieval engine with optional local models (Ollama) or user-configured OpenAI-compatible model endpoints. No model connection is required for the API to start.
+Zoi is a web dashboard and API for managing access to two custom Llama 3.1 8B PEFT adapters:
 
-## Current capabilities
+- `zoi` — the original custom adapter.
+- `zoi-unfiltered` — the separate unfiltered adapter.
 
-- Generate API keys with `POST /v1/keys`.
-- Validate keys using `GET /v1/keys`.
-- Chat using `POST /v1/chat/completions`.
-- Natural greetings and small talk, simple empathy, capability and identity questions, arithmetic with operator precedence and parentheses, and uncertainty-aware fallback answers.
-- Conversation-scoped facts such as a user's name, location, likes/dislikes, job, and learning goals.
-- Conversation history recall, user-saved notes, and relevance-ranked retrieval across a larger curated knowledge base covering APIs, HTTP, JavaScript, Node.js, Git, testing, security, databases, semantic search, AI/LLMs, hosting, Discord bots, Minecraft servers, networking, science, and other fundamentals.
-- Typo-tolerant vocabulary normalization handles common misspellings, contractions, informal phrasing, and selected synonyms before intent detection and retrieval. A broad offline English word list (100,000+ entries, depending on package version) supports conservative correction of some additional misspellings, not just hand-written examples.
-- Fuzzy term matching can recover some one- or two-character errors in longer words without fuzzy-matching very short terms like AI. Dictionary-based corrections are deliberately conservative and may miss typos in names, technical terms, slang, and words whose first letter is wrong.
-- Expanded offline reference coverage includes internet fundamentals, RAM vs storage, operating systems, algorithms, probability, evolution, climate, electricity, astronomy, clear writing, critical thinking, and machine learning.
-- Knowledge retrieval scores query terms and topic aliases rather than relying only on broad substring matching; short technical terms such as AI are handled explicitly.
-- Reset in-memory conversation state with `POST /v1/chat/reset`.
-- Automated tests with GitHub Actions.
+The dashboard uses Discord OAuth for identity. API keys are assigned to a Discord user and one adapter. Key hashes, OAuth state, one-time OAuth exchange codes, and dashboard sessions are stored in a local SQLite database named `users.db`.
 
-Without a configured provider, the fallback is a hand-built engine using language normalization, common typo corrections, fuzzy term matching, deterministic arithmetic, ranked retrieval over hand-authored knowledge, and conversation state—not a trained large language model. These techniques help it understand some misspelled or informal questions, but a dictionary is not a knowledge base and word correction is not semantic understanding. They do not provide the broad generalization of a trained language model. With a provider configured, open-ended messages can use that model, while arithmetic and conversation memory remain local and deterministic. Retrieval is not the same as understanding, and model quality depends on the selected model. Zoi has no built-in live web access and does not train itself from conversations.
+## Architecture
 
-## Hybrid model architecture
+- **Web GUI:** static frontend in `public/`, intended for Cloudflare Pages or Vercel connected to GitHub.
+- **Backend:** Node.js API and Discord OAuth callback on Bot-Hosting.net.
+- **Database:** SQLite on the bot host's persistent directory. Configure `PERSISTENT_DIR` or `DATABASE_PATH`; do not place the database in a temporary directory.
+- **Custom models:** base model `meta-llama/Llama-3.1-8B-Instruct` with the selected PEFT adapter. No Gemini, Groq, Modal, Neon, or Render integration is part of this architecture.
 
-Zoi uses a provider adapter rather than baking one model vendor into the core:
+## Dashboard features
 
-1. **Rules and retrieval fallback:** deterministic arithmetic, conversation facts, memory, and curated reference knowledge work without a model connection.
-2. **Optional model reasoning:** open-ended conversation and questions can be sent to a configured model for broader language understanding. Relevant built-in reference text is included when available.
-3. **Graceful fallback:** an unavailable, misconfigured, timed-out, or unsuccessful model returns control to the local engine instead of taking the API down.
-4. **Provider-neutral API:** the chat endpoint keeps its response shape and reports the selected engine in `engine` and provider status in `providerStatus`.
+- Sign in with Discord.
+- Create a key assigned to either `zoi` or `zoi-unfiltered`.
+- List and revoke only keys belonging to the signed-in Discord account.
+- Test an API key against the chat endpoint.
+- View backend and inference configuration status.
 
-The model connection is configured by the **operator** using environment variables; callers cannot supply arbitrary URLs or credentials per request. This avoids turning a public API into an unrestricted server-side request proxy or exposing provider secrets.
+API keys are shown only at creation time. The database stores SHA-256 hashes, not the original API key. The dashboard session token is held in the current browser tab's `sessionStorage`, and the server stores only its hash.
 
-### Configure a local Ollama model
+## Bot-host setup
 
-Install Ollama and pull a model on a machine reachable from the API service. For example:
-
-```bash
-ollama pull qwen2.5:3b
-ollama serve
-```
-
-Set these environment variables where Zoi runs:
-
-- `ZOI_MODEL_MODE=auto` — use the model when configured; otherwise use rules.
-- `ZOI_MODEL_PROVIDER=ollama`
-- `ZOI_MODEL_BASE_URL=http://localhost:11434` — local host only for HTTP; use a reachable HTTPS endpoint for a remote host.
-- `ZOI_MODEL_NAME=qwen2.5:3b`
-- `ZOI_MODEL_TIMEOUT_MS=20000` — optional; clamped between 1 and 60 seconds.
-
-Ollama is contacted at `/api/chat`. If Zoi runs on Render, `localhost` means the Render container itself—not your home computer. A model on another machine must be securely reachable from Render, typically through a private network or authenticated HTTPS gateway. Do not expose an unauthenticated Ollama port directly to the public internet.
-
-### Configure an OpenAI-compatible endpoint
-
-Set:
-
-- `ZOI_MODEL_MODE=auto`
-- `ZOI_MODEL_PROVIDER=openai-compatible`
-- `ZOI_MODEL_BASE_URL=https://your-provider.example/v1`
-- `ZOI_MODEL_NAME=the-model-id`
-- `ZOI_MODEL_API_KEY=your-secret` (optional for endpoints that do not require one)
-- `ZOI_MODEL_TIMEOUT_MS=20000` (optional)
-
-The service appends `/chat/completions` unless the full endpoint is already supplied. Only HTTPS remote endpoints are accepted by the adapter. Keep secrets in the hosting provider's environment-variable settings, never in source control or client-side code.
-
-Set `ZOI_MODEL_MODE=rules` to disable model calls. `/health` reports whether a model is configured and the provider/model label, but never returns the API key.
-
-### Hardware and cost reality
-
-The rules-only engine can run on a small Node.js instance but is much less capable than a trained language model. Model quality and speed depend on the model weights, quantization, available RAM/VRAM, CPU/GPU, context length, concurrency, and inference server. A small quantized model (for example, 3B–8B parameters) may be a practical starting point on suitable consumer hardware, but it will not reliably outperform frontier models. Larger models can require substantial GPU memory and slower or more expensive hosting. A hosted endpoint may charge per token or request; using a local model avoids a per-request model API bill but still costs compute, power, bandwidth, and maintenance. Render's ordinary lightweight web-service instance should not be assumed to have enough RAM/VRAM to host a capable LLM.
-
-The project does not claim to be smarter than ChatGPT. The architecture makes it possible to connect stronger models and measure quality while keeping a free fallback.
-
-## Run locally
+See [BOT_HOSTING_SETUP.md](BOT_HOSTING_SETUP.md) for environment variables, Discord OAuth configuration, persistent SQLite setup, and deployment steps.
 
 Requires Node.js 22 or newer.
 
 ```bash
+npm install
 npm test
 npm start
 ```
 
-The API listens on port 3000 by default. Configure `PORT` and `DATA_FILE` through environment variables.
+The API listens on `PORT` (default `3000`). Set `PERSISTENT_DIR` to the persistent directory supplied by your host. The database will be created as `users.db` in that directory unless `DATABASE_PATH` is set.
 
-## Generate an API key
+## Static website setup
 
-```bash
-curl -X POST http://localhost:3000/v1/keys \
-  -H "Content-Type: application/json" \
-  -d '{"label":"My test bot"}'
-```
+1. Deploy the repository's `public/` directory as a static site on Cloudflare Pages or Vercel.
+2. Edit `public/config.js` and set `window.ZOI_API_BASE` to the public HTTPS URL of the Node.js API running on Bot-Hosting.net. Do not add a trailing slash.
+3. Set `WEB_ORIGIN` on the API to the exact deployed website origin, such as `https://your-project.pages.dev`. Do not include a path.
+4. Set `DISCORD_REDIRECT_URI` to the API callback URL: `https://YOUR-BOT-API-HOST/auth/discord/callback`.
+5. In the Discord Developer Portal OAuth2 settings, add that exact callback URL as a redirect URI.
 
-Copy the returned `key` value. It is displayed once; the server stores only its SHA-256 hash.
+If you serve the dashboard directly from the Node.js API, leave `ZOI_API_BASE` empty and set `WEB_ORIGIN` to the API's own HTTPS origin.
 
-## Chat with the engine
+## Custom-model inference status
 
-Replace `YOUR_KEY` with your generated key:
+The dashboard and API-key management do not themselves load model weights. The existing custom adapters require a compatible inference runtime that can load the Llama base model and both PEFT adapters. This repository does **not** silently substitute another model when the adapter runtime is missing; the dashboard reports inference as unconfigured, and the chat endpoint returns an inference-unavailable error when a configured inference worker cannot be reached.
 
-```bash
-curl -X POST http://localhost:3000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_KEY" \
-  -d '{"message":"Hello!","conversationId":"my-test-conversation"}'
-```
+Bot-Hosting.net's available RAM, CPU, disk, and process limits must be checked before choosing a truly local runtime. An API key or SQLite database does not provide the compute needed for an 8B model. The previous Colab/tunnel setup is not part of this target architecture.
 
-The response uses a simple chat-completion structure:
+## Security notes
 
-```json
-{
-  "object": "chat.completion",
-  "model": "zoi-intelligence-0.4",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "Hello! What's on your mind?"
-      },
-      "finish_reason": "stop"
-    }
-  ],
-  "intent": "greeting",
-  "confidence": 0.94,
-  "conversationId": "my-test-conversation"
-}
-```
-
-Use the same `conversationId` to keep the engine's in-memory conversation state across requests. This state is lost when the process restarts. Conversation IDs should be unique per user's conversation and should not contain sensitive data.
-
-## Reset a conversation
-
-```bash
-curl -X POST http://localhost:3000/v1/chat/reset \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_KEY" \
-  -d '{"conversationId":"my-test-conversation"}'
-```
-
-## API endpoints
-
-- `GET /health` — service health.
-- `POST /v1/keys` — create a key; limited to 5 creations per IP per minute in this prototype.
-- `GET /v1/keys` — verify a key.
-- `POST /v1/chat/completions` — generate a reply using the configured model when available, with a built-in fallback.
-- `POST /v1/chat/reset` — clear a conversation's in-memory state.
-
-## Security and deployment limitations
-
-- This is not a hosted public API yet. Deploy it to a server before calling it from external applications.
-- Key records use a local JSON file. Production deployment needs durable storage, safe concurrent writes, key revocation, stronger rate limiting, and abuse prevention.
-- The key-creation rate limiter is in-memory and trusts the first `X-Forwarded-For` value; configure trusted proxy handling before exposing it publicly.
-- Conversation memory is in-process, bounded, and not durable across restarts.
-- Do not send sensitive personal data to this prototype.
-- GitHub Actions runs tests; it does not deploy the API or generate a production key.
-- No model is called unless an operator configures one. A configured provider may charge for usage; users must check its pricing and terms.
-
-## Zoi's two trained LoRA adapters (Colab + Render)
-
-This repository now supports assigning each generated API key to one adapter:
-
-- `zoi` — the original adapter at `/content/drive/MyDrive/Zoi/llama31-8b-zoi`.
-- `zoi-unfiltered` — the separate adapter at `/content/drive/MyDrive/Zoi/llama31-8b-zoi-unfiltered`.
-
-The existing Render Node API remains the public entry point and continues to hash public API keys. The selected adapter is saved with each key; chat requests cannot override that assignment by sending a different `model` field. The private inference worker accepts only requests with `ZOI_INFERENCE_TOKEN`.
-
-### Configure the free experimental inference worker
-
-Follow [inference/COLAB_SETUP.md](inference/COLAB_SETUP.md) to load the existing Drive adapters in a Google Colab GPU runtime. This loads the shared `meta-llama/Llama-3.1-8B-Instruct` base in 4-bit mode and loads both PEFT adapters without retraining.
-
-Set these variables on the **Render API service**, not in the public website:
-
-- `ZOI_INFERENCE_URL` — current private HTTPS tunnel base URL pointing to the Colab worker.
-- `ZOI_INFERENCE_TOKEN` — the same random secret set in the Colab runtime.
-- `ZOI_INFERENCE_TIMEOUT_MS=120000` — request timeout (the service clamps it to 5–180 seconds).
-
-The public page lets you choose an adapter when generating a new key. Existing keys without a stored model assignment continue to use `zoi`. When inference environment variables are absent, the API retains the legacy local rules/retrieval engine and reports `inferenceConfigured: false`; it does not claim the trained adapter was used. When the worker is configured but unavailable, chat returns HTTP 503 rather than silently pretending inference succeeded.
-
-### Free-tier limitation you must know
-
-This is a $0 best-effort experiment, not guaranteed 24/7 hosting. A free Colab runtime can disconnect or lose GPU access. An HTTP request cannot wake a terminated Colab runtime; restart the notebook and update the Render tunnel URL if it changes. Render's filesystem may also be ephemeral unless durable storage is configured, so do not assume JSON-stored API keys survive every redeploy. For durable public production service, use persistent storage and an always-on inference host.
-
+- Keep `DISCORD_CLIENT_SECRET` and any model/runtime credentials in the host's environment settings, never in GitHub or `public/`.
+- Use HTTPS for the dashboard and API.
+- Set `WEB_ORIGIN` to one exact origin; do not use `*`.
+- The API validates Discord sessions server-side. A browser-supplied Discord user ID is never accepted as identity.
+- Use the hosting provider's persistent storage for `users.db`, and keep its backups private.
+- The current API-key endpoint rate-limits creation per IP. Add additional abuse protection before offering the service publicly.
