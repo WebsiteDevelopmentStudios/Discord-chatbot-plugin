@@ -6,7 +6,6 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateReplyAsync, resetConversation } from "./intelligence.js";
-import { getModelStatus } from "./model-provider.js";
 import { loadKeys, saveKeys } from "./database.js";
 import { handleDashboardRequest } from "./dashboard.js";
 
@@ -186,7 +185,7 @@ export async function handleRequest(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.BOT_HOST_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus(), inference: { configured: Boolean(getLocalInferenceUrl() && process.env.ZOI_INFERENCE_TOKEN), location: "local-only", adapters: ["zoi", "zoi-unfiltered"] } });
+      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.BOT_HOST_COMMIT || process.env.GITHUB_SHA || null, model: { provider: "custom-peft", baseModel: "meta-llama/Llama-3.1-8B-Instruct" }, inference: { configured: Boolean(getLocalInferenceUrl() && process.env.ZOI_INFERENCE_TOKEN), location: "local-only", adapters: ["zoi", "zoi-unfiltered"] } });
     }
 
     if ((req.method === "POST" && url.pathname === "/v1/train/start") || (req.method === "GET" && url.pathname === "/v1/train/status")) {
@@ -337,9 +336,10 @@ export async function handleRequest(req, res) {
           });
         }
       } else {
-        completion = await generateReplyAsync({ message, conversationId, history });
-        completion.modelAssignment = assignedModel;
-        completion.inferenceConfigured = false;
+        return send(res, 503, {
+          error: "inference_not_configured",
+          message: "The local custom-model inference runtime is not configured. No substitute model was used."
+        });
       }
       if (body.learnFromConversation === true && completion.intent === "unknown_question") {
         try {
