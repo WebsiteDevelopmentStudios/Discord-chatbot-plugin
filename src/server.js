@@ -2,14 +2,15 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import { Worker } from "node:worker_threads";
 import { timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateReplyAsync, resetConversation } from "./intelligence.js";
 import { getModelStatus } from "./model-provider.js";
+import { loadKeys, saveKeys } from "./database.js";
+import { handleDashboardRequest } from "./dashboard.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const dataFile = resolve(process.env.DATA_FILE || resolve(here, "../data/api-keys.json"));
 const port = Number(process.env.PORT || 3000);
 const keyPrefix = "zai_";
 const requestWindows = new Map();
@@ -48,20 +49,6 @@ function startTraining() {
     trainingWorker = null;
   });
   return true;
-}
-
-async function loadKeys() {
-  try {
-    return JSON.parse(await readFile(dataFile, "utf8"));
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-    return [];
-  }
-}
-
-async function saveKeys(keys) {
-  await mkdir(dirname(dataFile), { recursive: true });
-  await writeFile(dataFile, JSON.stringify(keys, null, 2) + "\n", { mode: 0o600 });
 }
 
 function hashKey(key) {
@@ -151,7 +138,23 @@ function allowKeyCreation(req) {
 
 export async function handleRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
+  const allowedOrigin = (process.env.WEB_ORIGIN || "").trim().replace(/\/$/, "");
+  const requestOrigin = req.headers.origin || "";
+  if (allowedOrigin && requestOrigin === allowedOrigin) {
+    res.setHeader("access-control-allow-origin", allowedOrigin);
+    res.setHeader("access-control-allow-credentials", "false");
+    res.setHeader("access-control-allow-methods", "GET, POST, DELETE, OPTIONS");
+    res.setHeader("access-control-allow-headers", "authorization, content-type");
+    res.setHeader("vary", "Origin");
+  }
+  if (req.method === "OPTIONS") {
+    if (!allowedOrigin || requestOrigin !== allowedOrigin) return send(res, 403, { error: "origin_not_allowed" });
+    res.writeHead(204, { "cache-control": "no-store" });
+    return res.end();
+  }
   try {
+    if (await handleDashboardRequest(req, res, url, { send, readJson, allowKeyCreation })) return;
+
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
       const page = await readFile(resolve(here, "../public/index.html"), "utf8");
       res.writeHead(200, {
@@ -163,7 +166,7 @@ export async function handleRequest(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus(), inference: { configured: Boolean(process.env.ZOI_INFERENCE_URL && process.env.ZOI_INFERENCE_TOKEN), adapters: ["zoi", "zoi-unfiltered"] } });
+      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.BOT_HOST_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus(), inference: { configured: Boolean(process.env.ZOI_INFERENCE_URL && process.env.ZOI_INFERENCE_TOKEN), adapters: ["zoi", "zoi-unfiltered"] } });
     }
 
     if ((req.method === "POST" && url.pathname === "/v1/train/start") || (req.method === "GET" && url.pathname === "/v1/train/status")) {
