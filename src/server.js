@@ -278,7 +278,7 @@ export async function handleRequest(req, res) {
       // Adapter assignment is stored with the API key. Never trust a caller-supplied
       // model field: the public request cannot switch a regular key to the unfiltered adapter.
       const assignedModel = record.model === "zoi-unfiltered" ? "zoi-unfiltered" : "zoi";
-      const inferenceUrl = (process.env.ZOI_INFERENCE_URL || "").trim().replace(/\\/+$/, "");
+      const inferenceUrl = (process.env.ZOI_INFERENCE_URL || "").trim().replace(/\/+$/, "");
       const inferenceToken = (process.env.ZOI_INFERENCE_TOKEN || "").trim();
       let completion;
       if (inferenceUrl && inferenceToken) {
