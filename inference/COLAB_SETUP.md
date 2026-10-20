@@ -44,23 +44,29 @@ os.environ["ZOI_INFERENCE_TOKEN"] = "PASTE_SECRET_IN_COLAB_RUNTIME_ONLY"
 # os.environ["HF_TOKEN"] = "PASTE_HF_TOKEN_IN_RUNTIME_ONLY"
 ```
 
-6. Start the server in a background cell:
-
-```python
-import subprocess, sys
-server = subprocess.Popen([
-    sys.executable, "-m", "uvicorn", "colab_server:app",
-    "--host", "0.0.0.0", "--port", "7860"
-], cwd="/content")
-```
-
-For that command to import the server file, first download the repo's `inference/colab_server.py` to `/content/colab_server.py`:
+6. Download the server file, then start the worker. Model and adapter loading can take several minutes:
 
 ```python
 !wget -q https://raw.githubusercontent.com/WebsiteDevelopmentStudios/Discord-chatbot-plugin/feat/dual-adapter-inference-api/inference/colab_server.py -O /content/colab_server.py
+
+import subprocess, sys, time, urllib.request
+server = subprocess.Popen([
+    sys.executable, "-m", "uvicorn", "colab_server:app",
+    "--host", "127.0.0.1", "--port", "7860"
+], cwd="/content")
 ```
 
-Wait for both adapters to load before opening the tunnel. In a separate cell, install and run a tunnel tool you trust (for example, Cloudflare's temporary `cloudflared` tunnel). Keep the generated HTTPS URL private. The tunnel must forward to `http://127.0.0.1:7860`.
+Wait until the model and both adapters finish loading and the worker reports that it is listening on port 7860.
+
+7. In another cell, start a temporary Cloudflare HTTPS tunnel (no Cloudflare account is required for a quick tunnel):
+
+```bash
+!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+!chmod +x /usr/local/bin/cloudflared
+!cloudflared tunnel --no-autoupdate --url http://127.0.0.1:7860
+```
+
+Keep this cell running. It prints a temporary `https://....trycloudflare.com` URL. Treat that URL as private and use it as `ZOI_INFERENCE_URL` in Render. Do not add a trailing slash. If the Colab session or tunnel restarts, the URL may change and you must update Render.
 
 ## Render environment
 
