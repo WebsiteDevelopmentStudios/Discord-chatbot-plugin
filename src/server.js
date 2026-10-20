@@ -55,6 +55,20 @@ function hashKey(key) {
   return createHash("sha256").update(key).digest("hex");
 }
 
+function getLocalInferenceUrl() {
+  const value = (process.env.ZOI_INFERENCE_URL || "").trim().replace(/\/+$/, "");
+  if (!value) return "";
+  try {
+    const parsed = new URL(value);
+    const localHosts = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+    if (!["http:", "https:"].includes(parsed.protocol) || !localHosts.has(parsed.hostname) ||
+        parsed.username || parsed.password || parsed.search || parsed.hash) return "";
+    return value;
+  } catch {
+    return "";
+  }
+}
+
 function send(res, status, payload) {
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
@@ -172,7 +186,7 @@ export async function handleRequest(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.BOT_HOST_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus(), inference: { configured: Boolean(process.env.ZOI_INFERENCE_URL && process.env.ZOI_INFERENCE_TOKEN), adapters: ["zoi", "zoi-unfiltered"] } });
+      return send(res, 200, { ok: true, service: "discord-chatbot-intelligence-api", version: "0.2.0", commit: process.env.BOT_HOST_COMMIT || process.env.GITHUB_SHA || null, model: getModelStatus(), inference: { configured: Boolean(getLocalInferenceUrl() && process.env.ZOI_INFERENCE_TOKEN), location: "local-only", adapters: ["zoi", "zoi-unfiltered"] } });
     }
 
     if ((req.method === "POST" && url.pathname === "/v1/train/start") || (req.method === "GET" && url.pathname === "/v1/train/status")) {
@@ -287,7 +301,7 @@ export async function handleRequest(req, res) {
       // Adapter assignment is stored with the API key. Never trust a caller-supplied
       // model field: the public request cannot switch a regular key to the unfiltered adapter.
       const assignedModel = record.model === "zoi-unfiltered" ? "zoi-unfiltered" : "zoi";
-      const inferenceUrl = (process.env.ZOI_INFERENCE_URL || "").trim().replace(/\/+$/, "");
+      const inferenceUrl = getLocalInferenceUrl();
       const inferenceToken = (process.env.ZOI_INFERENCE_TOKEN || "").trim();
       let completion;
       if (inferenceUrl && inferenceToken) {
