@@ -47,7 +47,13 @@ label{display:block;font-size:12px;font-weight:700;color:#cbd3e5;margin:14px 0 7
 
   <section class="panel" aria-labelledby="key-title">
     <h3 id="key-title">1. Generate API key</h3>
-    <p class="hint">Your key is shown only once by the server. Copy it and keep it private.</p>
+    <p class="hint">Choose which trained adapter this key is permanently assigned to. The server stores only a hash of the key and enforces the adapter assignment.</p>
+    <label for="model">Model adapter</label>
+    <select id="model" style="width:100%;border:1px solid #30394e;border-radius:10px;padding:12px;background:#080d17;color:#f3f5ff">
+      <option value="zoi">Zoi (original adapter)</option>
+      <option value="zoi-unfiltered">Zoi Unfiltered (separate adapter)</option>
+    </select>
+    <p class="hint">Your key is shown only once. Keep it private. Creating a new key is required to choose a different adapter.</p>
     <button id="generate" type="button">Generate API Key</button>
     <label for="apiKey">API key</label>
     <div class="row">
@@ -84,7 +90,7 @@ $("generate").addEventListener("click", async () => {
     const response = await fetch("/v1/keys", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label: "Discord AI Plugin" })
+      body: JSON.stringify({ label: "Discord AI Plugin", model: $("model").value })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.key) {
