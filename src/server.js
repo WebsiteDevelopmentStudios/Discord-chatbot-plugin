@@ -11,7 +11,6 @@ import { handleDashboardRequest } from "./dashboard.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 3000);
-const keyPrefix = "zai_";
 const requestWindows = new Map();
 const WINDOW_MS = 60_000;
 const MAX_KEY_CREATIONS_PER_WINDOW = 5;
@@ -158,36 +157,6 @@ export async function handleRequest(req, res) {
         return send(res, 202, { accepted: true, job: trainingJob });
       }
       return send(res, 200, { job: trainingJob });
-    }
-
-    if (req.method === "POST" && url.pathname === "/v1/keys") {
-      if (!allowKeyCreation(req)) {
-        return send(res, 429, { error: "key_creation_rate_limited", message: "Maximum 5 key creations per IP per minute." });
-      }
-      const body = await readJson(req);
-      const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "My application";
-      const key = keyPrefix + randomBytes(32).toString("base64url");
-      const keys = await loadKeys();
-      const requestedModel = typeof body.model === "string" ? body.model : "zoi";
-      if (!["zoi", "zoi-unfiltered"].includes(requestedModel)) {
-        return send(res, 400, { error: "invalid_model", message: "model must be 'zoi' or 'zoi-unfiltered'." });
-      }
-      keys.push({
-        id: randomBytes(8).toString("hex"),
-        label: label || "My application",
-        model: requestedModel,
-        keyHash: hashKey(key),
-        createdAt: new Date().toISOString(),
-        status: "active"
-      });
-      await saveKeys(keys);
-      return send(res, 201, {
-        key,
-        id: keys.at(-1).id,
-        label: keys.at(-1).label,
-        model: keys.at(-1).model,
-        warning: "Copy this key now. It is only shown once; the server stores its SHA-256 hash."
-      });
     }
 
     if (req.method === "GET" && url.pathname === "/v1/keys") {
