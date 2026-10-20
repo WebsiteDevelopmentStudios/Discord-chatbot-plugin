@@ -8,6 +8,7 @@
 <meta name="referrer" content="no-referrer">
 <title>Zoi Dashboard</title>
 <script src="./config.js"></script>
+<script src="./webgpu-inference.js"></script>
 <style>
 :root{font-family:"DM Sans",system-ui,sans-serif;color:#edf1ff;background:#080a11;--muted:#9ba5bb;--line:#252d40;--panel:#101522;--panel2:#0b101b;--accent:#b8b4e4;--accent2:#93d5d0;--bad:#f0a3b1;--good:#9ce0c6}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 72% -10%,#292747 0,transparent 38%),radial-gradient(ellipse at 0% 45%,#10272a 0,transparent 28%),#080a11}button,input,textarea,select{font:inherit}button{border:1px solid transparent;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}button:hover:not(:disabled){transform:translateY(-1px)}button:disabled{opacity:.5;cursor:wait}.primary{background:var(--accent);color:#121321}.secondary{background:#171d2c;border-color:#30394e;color:#edf1ff}.danger{background:#291720;border-color:#60303e;color:#ffdbe1}input,textarea,select{width:100%;border:1px solid #30394e;border-radius:10px;padding:12px;background:#080d17;color:#f3f5ff;outline:none}input:focus,textarea:focus,select:focus{border-color:#aaa6d9;box-shadow:0 0 0 3px #bcb9dc18}textarea{min-height:100px;resize:vertical}main{width:min(1080px,100%);margin:0 auto;padding:34px 22px 70px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:52px}.brand{display:flex;align-items:center;gap:12px}.mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#d2d0f0,#9bd5d0);display:grid;place-items:center;color:#111522;font-family:"Space Grotesk",sans-serif;font-size:21px;font-weight:700}.brand-name{font-family:"Space Grotesk",sans-serif;font-size:18px;font-weight:700;letter-spacing:-.04em}.brand-sub{font-size:11px;color:var(--muted);margin-top:3px}.account{display:flex;align-items:center;gap:10px}.avatar{width:32px;height:32px;border-radius:50%;background:#242c40;object-fit:cover}.hidden{display:none!important}.hero{max-width:730px;margin-bottom:32px}.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent2);font-weight:700;margin-bottom:14px}.hero h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.06em;margin:0 0 17px}.hero p{color:var(--muted);font-size:15px;line-height:1.8;max-width:660px;margin:0}.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:16px;align-items:start}.panel{border:1px solid var(--line);background:linear-gradient(145deg,#121927ed,#0d121ded);border-radius:17px;padding:22px;min-width:0}.panel+.panel{margin-top:16px}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}.panel h2{font-size:16px;margin:0;font-weight:700;letter-spacing:-.02em}.panel p{color:var(--muted);font-size:12px;line-height:1.7;margin:8px 0 17px}.number{font-size:11px;color:#bcb9dc;border:1px solid #41405c;border-radius:7px;padding:4px 7px}.field{margin:14px 0}.field label{display:block;font-size:12px;color:#cbd3e5;font-weight:700;margin-bottom:7px}.row{display:flex;gap:9px;align-items:center}.row>*{min-width:0}.hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}.status{font-size:12px;line-height:1.6;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px}.status.good{color:var(--good)}.status.bad{color:var(--bad)}.model-card{display:flex;align-items:flex-start;gap:12px;padding:13px;border:1px solid #30394e;border-radius:12px;margin:10px 0;background:#0a0f19}.model-card input{width:auto;margin-top:3px;accent-color:#b8b4e4}.model-card strong{font-size:12px;display:block}.model-card span{font-size:11px;line-height:1.6;color:var(--muted);display:block;margin-top:4px}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #30394e;border-radius:999px;padding:5px 8px;font-size:10px;color:var(--muted)}.dot{width:6px;height:6px;border-radius:50%;background:#858da1}.dot.good{background:#8de0b9}.key-list{display:grid;gap:10px}.key-item{border:1px solid #293247;border-radius:12px;padding:13px;background:#0a0f19}.key-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.key-name{font-size:12px;font-weight:700;overflow-wrap:anywhere}.key-meta{font-size:11px;color:var(--muted);line-height:1.7;margin-top:5px}.key-actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}.key-actions button{padding:7px 10px;font-size:11px}.response{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;background:#080d17;border:1px solid var(--line);border-radius:10px;padding:13px;min-height:50px;margin-top:12px;font-size:12px}.empty{border:1px dashed #30394e;border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}.footer{display:flex;justify-content:space-between;gap:12px;color:#69748a;font-size:11px;margin-top:22px}.runtime-note{border-left:2px solid #aaa6d9;padding:2px 0 2px 12px;margin-top:14px!important}
@@ -55,7 +56,7 @@
 
         <section class="panel">
           <div class="panel-head"><h2>Test your custom model</h2><span class="number">02</span></div>
-          <p>Send a test prompt using a key you just created or one you paste below. The key stays in this browser tab and is not saved by the dashboard.</p>
+          <p>The key is checked by the API to identify its assigned adapter. The prompt then runs locally in your browser with WebGPU; it is not sent to the backend. A compatible ONNX export must be configured for that adapter.</p>
           <div class="field"><label for="testKey">API key</label><input id="testKey" type="password" placeholder="zai_…" autocomplete="off" spellcheck="false"></div>
           <div class="field"><label for="message">Prompt</label><textarea id="message" maxlength="4000">Hi Zoi, briefly introduce yourself.</textarea></div>
           <button id="test" class="primary" type="button">Send test message</button>
@@ -217,31 +218,48 @@ $("test").addEventListener("click", async () => {
   const button = $("test"); const key = $("testKey").value.trim(); const message = $("message").value.trim();
   if (!key) return status("testStatus", "Enter an API key first.", "bad");
   if (!message) return status("testStatus", "Enter a prompt first.", "bad");
-  button.disabled = true; button.textContent = "Sending…"; $("response").textContent = "";
-  status("testStatus", "Sending a request to your assigned adapter…");
+  if (!window.ZoiWebGPU?.isSupported()) return status("testStatus", "WebGPU is not available in this browser. Try a current Chrome or Edge browser on supported hardware.", "bad");
+  button.disabled = true; button.textContent = "Running on WebGPU…"; $("response").textContent = "";
+  status("testStatus", "Validating API key and adapter assignment…");
   try {
-    const response = await fetch(API_BASE + "/v1/chat/completions", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + key }, body: JSON.stringify({ message }), cache: "no-store" });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || data.error || "Request failed with HTTP " + response.status);
-    $("response").textContent = data.choices?.[0]?.message?.content || "The model returned an empty response.";
-    status("testStatus", "Request successful · " + (data.model || "assigned adapter") + " · " + (data.engine || "backend"), "good");
-  } catch (e) { status("testStatus", e.message || "Model request failed.", "bad"); $("response").textContent = "No response returned."; }
-  finally { button.disabled = false; button.textContent = "Send test message"; }
+    const validation = await fetch(API_BASE + "/v1/keys", {
+      method: "GET",
+      headers: { authorization: "Bearer " + key },
+      cache: "no-store"
+    });
+    const keyData = await validation.json().catch(() => ({}));
+    if (!validation.ok || !keyData.valid) throw new Error(keyData.message || "That API key is invalid or revoked.");
+    const model = keyData.model === "zoi-unfiltered" ? "zoi-unfiltered" : "zoi";
+    if (!window.ZoiWebGPU.configured(model)) throw new Error(
+      'The API key is assigned to "' + model + '", but its browser-compatible ONNX model is not configured yet. See WEBGPU_MODEL_SETUP.md and public/config.js.'
+    );
+    const answer = await window.ZoiWebGPU.generate(model, message, (message) => status("testStatus", message));
+    $("response").textContent = answer;
+    status("testStatus", "Success · " + model + " · generated locally with WebGPU. Your prompt was not sent to the model API.", "good");
+  } catch (e) {
+    status("testStatus", e.message || "Browser inference failed.", "bad");
+    $("response").textContent = "No response returned.";
+  } finally {
+    button.disabled = false; button.textContent = "Send test message";
+  }
 });
 async function loadHealth() {
+  const webgpu = window.ZoiWebGPU;
+  const supported = Boolean(webgpu?.isSupported());
+  const configured = Boolean(webgpu?.configured("zoi") && webgpu?.configured("zoi-unfiltered"));
+  $("runtimeDot").className = "dot" + (supported && configured ? " good" : "");
+  $("runtimeLabel").textContent = !supported ? "WebGPU unavailable" : configured ? "Browser models configured" : "Browser model exports needed";
+  $("runtimeDetails").textContent = !supported
+    ? "This browser does not expose WebGPU. Use a supported, up-to-date browser and device."
+    : configured
+      ? "WebGPU is available and both adapter model IDs are configured. The first run downloads model files into browser cache; large models require substantial RAM and storage."
+      : "WebGPU is available. Before inference, export each custom PEFT adapter into a Transformers.js-compatible ONNX model and set the public model IDs in public/config.js. Raw PEFT folders and Google Drive folder links are not directly loadable by this runtime.";
   try {
     const response = await fetch(API_BASE + "/health", { cache: "no-store" });
-    const data = await response.json();
-    const configured = Boolean(data.inference?.configured);
-    $("runtimeDot").className = "dot" + (configured ? " good" : "");
-    $("runtimeLabel").textContent = configured ? "Inference endpoint configured" : "Inference endpoint not configured";
-    $("runtimeDetails").textContent = configured
-      ? "The backend has an inference endpoint configured. A successful chat request is still needed to verify both adapters."
-      : "The API is reachable, but the custom-model inference endpoint is not configured. The dashboard cannot run the trained adapters until the local inference runtime is available.";
+    if (!response.ok) throw new Error("Backend returned HTTP " + response.status);
+    await response.json();
   } catch {
-    $("runtimeDot").className = "dot";
-    $("runtimeLabel").textContent = "Backend unreachable";
-    $("runtimeDetails").textContent = "Check the configured bot API URL and whether the bot host is online.";
+    $("runtimeDetails").textContent += " The API is currently unreachable, so key validation and dashboard management may not work.";
   }
 }
 $("refreshKeys").addEventListener("click", loadKeys);
