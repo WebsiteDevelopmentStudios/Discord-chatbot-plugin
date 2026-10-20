@@ -36,13 +36,9 @@ Set these environment variables in the hosting panel:
 
 Do not commit real secrets to GitHub. If the host does not provide a persistent directory, ask its documentation/support which path persists across restarts before going live. SQLite cannot guarantee persistence if the database file lives on ephemeral storage.
 
-For the custom adapters, the API accepts only a **local** inference URL. If a compatible inference server is running on the same host, set:
+The Bot-Hosting.net service handles Discord OAuth, API-key ownership/revocation, and SQLite. It does not load the 8B model. The dashboard's test-message UI uses browser WebGPU after the API validates the key. Follow [WEBGPU_MODEL_SETUP.md](WEBGPU_MODEL_SETUP.md) to merge/export both custom adapters and configure their public ONNX model IDs in `public/config.js`.
 
-- `ZOI_INFERENCE_URL=http://127.0.0.1:7860` (replace the port if needed)
-- `ZOI_INFERENCE_TOKEN` to a long random secret shared only with that local process
-- `ZOI_INFERENCE_TIMEOUT_MS=120000` (optional)
-
-Remote inference URLs are rejected by the API. Do not set these values until a real local runtime that loads the base model and both PEFT adapters is installed and tested. The current Colab-specific Python script is not a Bot-Hosting.net runtime.
+Do not set `ZOI_INFERENCE_URL` or `ZOI_INFERENCE_TOKEN` for browser inference; they are not needed for that path. The server-side `POST /v1/chat/completions` endpoint remains unavailable unless a separate compatible server-side runtime is configured. A browser's GPU cannot serve arbitrary remote API callers.
 
 Start the service with:
 
@@ -76,7 +72,7 @@ If you use a custom domain, set `WEB_ORIGIN` to that domain and redeploy the fro
 4. Create a key assigned to `zoi` or `zoi-unfiltered`. Copy it immediately; it is shown only once.
 5. Confirm the key appears in **Your API keys** with the correct adapter.
 6. Use **Revoke key** to verify owner-scoped revocation works.
-7. Check **Inference status**. It must not be marked configured until a compatible local runtime for the actual custom adapters is available and verified.
+7. Check **Inference status**. It should report WebGPU availability and whether both public ONNX model IDs are configured. Then test each adapter with a key assigned to it.
 
 ## Notes
 
