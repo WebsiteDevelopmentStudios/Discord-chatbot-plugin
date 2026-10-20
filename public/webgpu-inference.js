@@ -29,7 +29,7 @@ async function loadPipeline(model, onProgress = () => {}) {
       onProgress("Downloading model files for " + model + ". The first load can be several gigabytes.");
       return pipeline("text-generation", modelId, {
         device: "webgpu",
-        dtype: "q4",
+        dtype: "fp16",
         progress_callback: (event) => {
           if (event && typeof event.status === "string") {
             const file = event.file ? " · " + event.file : "";
