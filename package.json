@@ -2,7 +2,7 @@
   "name": "discord-chatbot-intelligence-api",
   "version": "0.2.0",
   "private": true,
-  "description": "A hybrid conversational intelligence API with rules fallback and optional local or OpenAI-compatible models.",
+  "description": "Discord-authenticated dashboard and API for custom Zoi PEFT adapters with local SQLite persistence.",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
@@ -12,6 +12,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "word-list": "^4.1.0"
+    "word-list": "^4.1.0",
+    "better-sqlite3": "^12.2.0"
   }
 }

@@ -4,185 +4,270 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Zoi API</title>
+<meta name="description" content="Zoi custom-model dashboard">
+<meta name="referrer" content="no-referrer">
+<title>Zoi Dashboard</title>
+<script src="./config.js"></script>
+<script src="./webgpu-inference.js"></script>
 <style>
-:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#edf0fb;background:#070a12;--muted:#9aa5bb;--line:#293146;--panel:#101625;--accent:#bcb9dc;--good:#9dd9c9;--bad:#f0a8b4}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -15%,#252644 0,transparent 48%),#070a12}
-button,input,textarea{font:inherit}
-button{border:0;border-radius:10px;padding:12px 16px;background:var(--accent);color:#111322;font-weight:750;cursor:pointer}
-button:disabled{opacity:.55;cursor:wait}
-input,textarea{width:100%;border:1px solid #30394e;border-radius:10px;padding:12px;background:#080d17;color:#f3f5ff;outline:none}
-input:focus,textarea:focus{border-color:#a9a7d0;box-shadow:0 0 0 3px #bcb9dc18}
-textarea{min-height:92px;resize:vertical}
-main{width:min(720px,100%);margin:0 auto;padding:48px 18px 64px}
-header{display:flex;align-items:center;gap:13px;margin-bottom:34px}
-.logo{width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(135deg,#c1bee0,#a6c9d2);color:#101321;font-size:21px;font-weight:900}
-h1{font-size:21px;margin:0}
-.subtitle{font-size:12px;color:var(--muted);margin-top:4px}
-h2{font-size:clamp(27px,5vw,38px);letter-spacing:-.04em;margin:0 0 9px}
-.intro{color:var(--muted);line-height:1.65;font-size:14px;margin:0 0 25px}
-.panel{border:1px solid var(--line);background:linear-gradient(145deg,#121a2a,#0d1320);border-radius:16px;padding:21px;margin-top:15px}
-.panel h3{font-size:15px;margin:0 0 8px}
-.hint{color:var(--muted);font-size:12px;line-height:1.55;margin:8px 0 14px}
-label{display:block;font-size:12px;font-weight:700;color:#cbd3e5;margin:14px 0 7px}
-.row{display:flex;gap:9px;align-items:center}
-.row input{min-width:0}
-.status{font-size:12px;line-height:1.5;margin-top:12px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
-.status.good{color:var(--good)}
-.status.bad{color:var(--bad)}
-.response{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;background:#080d17;border:1px solid var(--line);border-radius:10px;padding:13px;min-height:48px;margin-top:12px;font-size:13px}
-@media(max-width:520px){main{padding:30px 13px 42px}.panel{padding:16px}.row{align-items:stretch;flex-direction:column}.row button{width:100%}}
+:root{font-family:"DM Sans",system-ui,sans-serif;color:#edf1ff;background:#080a11;--muted:#9ba5bb;--line:#252d40;--panel:#101522;--panel2:#0b101b;--accent:#b8b4e4;--accent2:#93d5d0;--bad:#f0a3b1;--good:#9ce0c6}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 72% -10%,#292747 0,transparent 38%),radial-gradient(ellipse at 0% 45%,#10272a 0,transparent 28%),#080a11}button,input,textarea,select{font:inherit}button{border:1px solid transparent;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}button:hover:not(:disabled){transform:translateY(-1px)}button:disabled{opacity:.5;cursor:wait}.primary{background:var(--accent);color:#121321}.secondary{background:#171d2c;border-color:#30394e;color:#edf1ff}.danger{background:#291720;border-color:#60303e;color:#ffdbe1}input,textarea,select{width:100%;border:1px solid #30394e;border-radius:10px;padding:12px;background:#080d17;color:#f3f5ff;outline:none}input:focus,textarea:focus,select:focus{border-color:#aaa6d9;box-shadow:0 0 0 3px #bcb9dc18}textarea{min-height:100px;resize:vertical}main{width:min(1080px,100%);margin:0 auto;padding:34px 22px 70px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:52px}.brand{display:flex;align-items:center;gap:12px}.mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#d2d0f0,#9bd5d0);display:grid;place-items:center;color:#111522;font-family:"Space Grotesk",sans-serif;font-size:21px;font-weight:700}.brand-name{font-family:"Space Grotesk",sans-serif;font-size:18px;font-weight:700;letter-spacing:-.04em}.brand-sub{font-size:11px;color:var(--muted);margin-top:3px}.account{display:flex;align-items:center;gap:10px}.avatar{width:32px;height:32px;border-radius:50%;background:#242c40;object-fit:cover}.hidden{display:none!important}.hero{max-width:730px;margin-bottom:32px}.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent2);font-weight:700;margin-bottom:14px}.hero h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.06em;margin:0 0 17px}.hero p{color:var(--muted);font-size:15px;line-height:1.8;max-width:660px;margin:0}.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:16px;align-items:start}.panel{border:1px solid var(--line);background:linear-gradient(145deg,#121927ed,#0d121ded);border-radius:17px;padding:22px;min-width:0}.panel+.panel{margin-top:16px}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}.panel h2{font-size:16px;margin:0;font-weight:700;letter-spacing:-.02em}.panel p{color:var(--muted);font-size:12px;line-height:1.7;margin:8px 0 17px}.number{font-size:11px;color:#bcb9dc;border:1px solid #41405c;border-radius:7px;padding:4px 7px}.field{margin:14px 0}.field label{display:block;font-size:12px;color:#cbd3e5;font-weight:700;margin-bottom:7px}.row{display:flex;gap:9px;align-items:center}.row>*{min-width:0}.hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}.status{font-size:12px;line-height:1.6;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px}.status.good{color:var(--good)}.status.bad{color:var(--bad)}.model-card{display:flex;align-items:flex-start;gap:12px;padding:13px;border:1px solid #30394e;border-radius:12px;margin:10px 0;background:#0a0f19}.model-card input{width:auto;margin-top:3px;accent-color:#b8b4e4}.model-card strong{font-size:12px;display:block}.model-card span{font-size:11px;line-height:1.6;color:var(--muted);display:block;margin-top:4px}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #30394e;border-radius:999px;padding:5px 8px;font-size:10px;color:var(--muted)}.dot{width:6px;height:6px;border-radius:50%;background:#858da1}.dot.good{background:#8de0b9}.key-list{display:grid;gap:10px}.key-item{border:1px solid #293247;border-radius:12px;padding:13px;background:#0a0f19}.key-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.key-name{font-size:12px;font-weight:700;overflow-wrap:anywhere}.key-meta{font-size:11px;color:var(--muted);line-height:1.7;margin-top:5px}.key-actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}.key-actions button{padding:7px 10px;font-size:11px}.response{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;background:#080d17;border:1px solid var(--line);border-radius:10px;padding:13px;min-height:50px;margin-top:12px;font-size:12px}.empty{border:1px dashed #30394e;border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}.footer{display:flex;justify-content:space-between;gap:12px;color:#69748a;font-size:11px;margin-top:22px}.runtime-note{border-left:2px solid #aaa6d9;padding:2px 0 2px 12px;margin-top:14px!important}
+@media(max-width:760px){main{padding:23px 14px 45px}.topbar{margin-bottom:37px}.grid{grid-template-columns:1fr}.panel{padding:17px}.hero h1{font-size:40px}.account{gap:7px}.account button{padding:9px 11px}}
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <div class="logo" aria-hidden="true">Z</div>
-    <div><h1>Zoi API</h1><div class="subtitle">Discord Chatbot Plugin · API access</div></div>
-  </header>
+  <nav class="topbar">
+    <div class="brand"><div class="mark">Z</div><div><div class="brand-name">Zoi</div><div class="brand-sub">CUSTOM MODEL DASHBOARD</div></div></div>
+    <div id="account" class="account hidden"><img id="avatar" class="avatar hidden" alt=""><span id="username" style="font-size:12px"></span><button id="logout" class="secondary" type="button">Sign out</button></div>
+    <button id="login" class="primary" type="button">Continue with Discord</button>
+  </nav>
 
-  <h2>Connect your bot.</h2>
-  <p class="intro">Generate an API key for the Discord chatbot plugin, then send a test message through the same API your bot uses.</p>
+  <section class="hero">
+    <div class="eyebrow">Personal model workspace</div>
+    <h1>Your models.<br>One dashboard.</h1>
+    <p>Manage API access to your custom Zoi adapters, test responses, and keep each key tied to the model you choose. Sign in with Discord to manage your own keys.</p>
+  </section>
 
-  <section class="panel" aria-labelledby="key-title">
-    <h3 id="key-title">1. Generate API key</h3>
-    <p class="hint">Choose which trained adapter this key is permanently assigned to. The server stores only a hash of the key and enforces the adapter assignment.</p>
-    <label for="model">Model adapter</label>
-    <select id="model" style="width:100%;border:1px solid #30394e;border-radius:10px;padding:12px;background:#080d17;color:#f3f5ff">
-      <option value="zoi">Zoi (original adapter)</option>
-      <option value="zoi-unfiltered">Zoi Unfiltered (separate adapter)</option>
-    </select>
-    <p class="hint">Your key is shown only once. Keep it private. Creating a new key is required to choose a different adapter.</p>
-    <button id="generate" type="button">Generate API Key</button>
-    <label for="apiKey">API key</label>
-    <div class="row">
-      <input id="apiKey" type="password" placeholder="zai_…" autocomplete="off" spellcheck="false">
-      <button id="toggleKey" type="button" aria-label="Show API key">Show</button>
-      <button id="copyKey" type="button">Copy</button>
+  <div id="loginNotice" class="panel">
+    <div class="panel-head"><h2>Sign in to manage your workspace</h2><span class="number">01</span></div>
+    <p>Your Discord identity is used to protect your keys and dashboard settings. The dashboard never asks for a third-party model-provider key.</p>
+    <button id="loginSecondary" class="primary" type="button">Sign in with Discord</button>
+    <div id="loginStatus" class="status" role="status" aria-live="polite"></div>
+  </div>
+
+  <section id="workspace" class="hidden">
+    <div class="grid">
+      <div>
+        <section class="panel">
+          <div class="panel-head"><h2>Create an API key</h2><span class="number">01</span></div>
+          <p>Each key is assigned to one adapter. That assignment is enforced by the backend; API requests cannot switch a key to the other adapter.</p>
+          <label class="model-card"><input type="radio" name="model" value="zoi" checked><div><strong>Zoi</strong><span>Original custom adapter</span></div></label>
+          <label class="model-card"><input type="radio" name="model" value="zoi-unfiltered"><div><strong>Zoi Unfiltered</strong><span>Separate custom adapter and key assignment</span></div></label>
+          <div class="field"><label for="label">Key label</label><input id="label" maxlength="80" value="My Zoi application" placeholder="For example: Discord bot"></div>
+          <button id="createKey" class="primary" type="button">Create key</button>
+          <div id="createStatus" class="status" role="status" aria-live="polite"></div>
+          <div id="newKeyArea" class="hidden">
+            <div class="field"><label for="newKey">New API key — shown once</label><input id="newKey" type="password" readonly autocomplete="off" spellcheck="false"></div>
+            <div class="row"><button id="toggleNewKey" class="secondary" type="button">Show</button><button id="copyNewKey" class="secondary" type="button">Copy key</button></div>
+            <p class="hint">Save this key now. For security, the full key cannot be viewed again after leaving this screen.</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>Test your custom model</h2><span class="number">02</span></div>
+          <p>The key is checked by the API to identify its assigned adapter. The prompt then runs locally in your browser with WebGPU; it is not sent to the backend. A compatible ONNX export must be configured for that adapter.</p>
+          <div class="field"><label for="testKey">API key</label><input id="testKey" type="password" placeholder="zai_…" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="message">Prompt</label><textarea id="message" maxlength="4000">Hi Zoi, briefly introduce yourself.</textarea></div>
+          <button id="test" class="primary" type="button">Send test message</button>
+          <div id="testStatus" class="status" role="status" aria-live="polite"></div>
+          <div id="response" class="response" aria-live="polite">Your model response will appear here.</div>
+        </section>
+      </div>
+      <div>
+        <section class="panel">
+          <div class="panel-head"><h2>Inference status</h2><span class="number">LIVE</span></div>
+          <p>Dashboard availability and model availability are separate. This status reports what the backend currently advertises.</p>
+          <div class="pill"><span id="runtimeDot" class="dot"></span><span id="runtimeLabel">Checking backend…</span></div>
+          <p id="runtimeDetails" class="runtime-note">Connecting to the bot API.</p>
+          <button id="refreshStatus" class="secondary" type="button">Refresh status</button>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Your API keys</h2><span class="number" id="keyCount">0</span></div>
+          <p>Only keys associated with your Discord account are shown here. Revoking a key immediately disables further requests using it.</p>
+          <div id="keyList" class="key-list"><div class="empty">Sign in to load your keys.</div></div>
+          <div id="listStatus" class="status" role="status" aria-live="polite"></div>
+          <button id="refreshKeys" class="secondary" type="button" style="margin-top:12px">Refresh keys</button>
+        </section>
+      </div>
     </div>
-    <div id="keyStatus" class="status" role="status" aria-live="polite"></div>
   </section>
-
-  <section class="panel" aria-labelledby="test-title">
-    <h3 id="test-title">2. Test API</h3>
-    <p class="hint">This sends a real request to the API endpoint used by the Discord chatbot plugin.</p>
-    <label for="message">Test message</label>
-    <textarea id="message" maxlength="4000">Hi Zoi, briefly introduce yourself.</textarea>
-    <div style="margin-top:12px"><button id="test" type="button">Test API</button></div>
-    <div id="testStatus" class="status" role="status" aria-live="polite"></div>
-    <div id="response" class="response" aria-live="polite">Your API response will appear here.</div>
-  </section>
+  <div class="footer"><span>Zoi · Custom adapters</span><span>Keys are private to your Discord account</span></div>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-const keyInput = $("apiKey");
-const keyStatus = $("keyStatus");
-const testStatus = $("testStatus");
-const responseBox = $("response");
-
-$("generate").addEventListener("click", async () => {
-  const button = $("generate");
-  button.disabled = true;
-  keyStatus.className = "status";
-  keyStatus.textContent = "Generating key…";
+const API_BASE = String(window.ZOI_API_BASE || "").trim().replace(/\/+$/, "");
+const tokenKey = "zoi_dashboard_session";
+let sessionToken = sessionStorage.getItem(tokenKey) || "";
+let currentUser = null;
+const api = (path, options = {}) => fetch(API_BASE + path, {
+  ...options,
+  headers: { ...(options.body ? { "content-type": "application/json" } : {}), ...(sessionToken ? { authorization: "Bearer " + sessionToken } : {}), ...(options.headers || {}) },
+  cache: "no-store"
+});
+function status(id, message, type = "") { const el = $(id); el.className = "status" + (type ? " " + type : ""); el.textContent = message; }
+function selectedModel() { return document.querySelector('input[name="model"]:checked')?.value || "zoi"; }
+function showWorkspace(user) {
+  currentUser = user;
+  $("workspace").classList.remove("hidden");
+  $("loginNotice").classList.add("hidden");
+  $("login").classList.add("hidden");
+  $("account").classList.remove("hidden");
+  $("username").textContent = user.username;
+  if (user.avatar && user.id) {
+    $("avatar").src = "https://cdn.discordapp.com/avatars/" + encodeURIComponent(user.id) + "/" + encodeURIComponent(user.avatar) + ".png?size=64";
+    $("avatar").classList.remove("hidden");
+  } else $("avatar").classList.add("hidden");
+  loadKeys();
+  loadHealth();
+}
+function signedOut() {
+  sessionToken = "";
+  sessionStorage.removeItem(tokenKey);
+  currentUser = null;
+  $("workspace").classList.add("hidden");
+  $("loginNotice").classList.remove("hidden");
+  $("login").classList.remove("hidden");
+  $("account").classList.add("hidden");
+}
+async function login() {
+  location.href = API_BASE + "/auth/discord";
+}
+$("login").addEventListener("click", login);
+$("loginSecondary").addEventListener("click", login);
+$("logout").addEventListener("click", async () => {
+  try { await api("/auth/session", { method: "DELETE" }); } catch {}
+  signedOut();
+});
+async function exchangeOAuthCode() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get("oauth_code");
+  const error = params.get("oauth_error");
+  if (error) status("loginStatus", "Discord sign-in failed. Please try again.", "bad");
+  if (!code) return;
+  history.replaceState({}, "", location.pathname + location.hash);
+  status("loginStatus", "Completing Discord sign-in…");
   try {
-    const response = await fetch("/v1/keys", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label: "Discord AI Plugin", model: $("model").value })
-    });
+    const response = await fetch(API_BASE + "/auth/exchange", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }), cache: "no-store" });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.key) {
-      throw new Error(data.message || data.error || "Could not generate an API key.");
-    }
-    keyInput.value = data.key;
-    keyInput.type = "password";
-    $("toggleKey").textContent = "Show";
-    keyStatus.className = "status good";
-    keyStatus.textContent = (data.warning || "API key generated.") + "\nSave this key somewhere secure before leaving this page.";
-  } catch (error) {
-    keyStatus.className = "status bad";
-    keyStatus.textContent = error.message || "API key generation failed.";
-  } finally {
-    button.disabled = false;
-  }
-});
-
-$("toggleKey").addEventListener("click", () => {
-  const show = keyInput.type === "password";
-  keyInput.type = show ? "text" : "password";
-  $("toggleKey").textContent = show ? "Hide" : "Show";
-  $("toggleKey").setAttribute("aria-label", show ? "Hide API key" : "Show API key");
-});
-
-$("copyKey").addEventListener("click", async () => {
-  if (!keyInput.value) {
-    keyStatus.className = "status bad";
-    keyStatus.textContent = "Generate or enter an API key first.";
-    return;
-  }
+    if (!response.ok || !data.token) throw new Error(data.message || data.error || "Could not complete sign-in.");
+    sessionToken = data.token;
+    sessionStorage.setItem(tokenKey, sessionToken);
+    showWorkspace(data.user);
+  } catch (e) { status("loginStatus", e.message || "Sign-in failed. Please try again.", "bad"); }
+}
+async function restoreSession() {
+  if (!sessionToken) return;
   try {
-    await navigator.clipboard.writeText(keyInput.value);
-    keyStatus.className = "status good";
-    keyStatus.textContent = "API key copied. Keep it private.";
-  } catch {
-    keyInput.type = "text";
-    keyInput.focus();
-    keyInput.select();
-    keyStatus.className = "status";
-    keyStatus.textContent = "Clipboard access was blocked. The key is selected so you can copy it manually.";
-  }
+    const response = await api("/auth/me");
+    const data = await response.json();
+    if (response.ok && data.authenticated) showWorkspace(data.user);
+    else signedOut();
+  } catch { status("loginStatus", "Could not reach the bot API. Check the API URL and backend availability.", "bad"); }
+}
+async function loadKeys() {
+  const list = $("keyList");
+  list.innerHTML = '<div class="empty">Loading your keys…</div>';
+  try {
+    const response = await api("/dashboard/keys");
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || data.error || "Could not load keys.");
+    $("keyCount").textContent = String(data.keys.length);
+    if (!data.keys.length) { list.innerHTML = '<div class="empty">No API keys yet. Create one to get started.</div>'; return; }
+    list.replaceChildren();
+    for (const key of data.keys) {
+      const card = document.createElement("article");
+      card.className = "key-item";
+      const top = document.createElement("div"); top.className = "key-top";
+      const title = document.createElement("div");
+      const name = document.createElement("div"); name.className = "key-name"; name.textContent = key.label;
+      const meta = document.createElement("div"); meta.className = "key-meta"; meta.textContent = key.model + " · " + new Date(key.createdAt).toLocaleDateString() + " · " + key.status;
+      title.append(name, meta);
+      const pill = document.createElement("span"); pill.className = "pill"; pill.textContent = key.status === "active" ? "Active" : "Revoked";
+      top.append(title, pill); card.append(top);
+      if (key.status === "active") {
+        const actions = document.createElement("div"); actions.className = "key-actions";
+        const revoke = document.createElement("button"); revoke.className = "danger"; revoke.type = "button"; revoke.textContent = "Revoke key";
+        revoke.addEventListener("click", async () => {
+          if (!confirm("Revoke this key? Apps using it will stop working.")) return;
+          revoke.disabled = true;
+          try {
+            const result = await api("/dashboard/keys/" + encodeURIComponent(key.id), { method: "DELETE" });
+            if (!result.ok) throw new Error("Could not revoke key.");
+            status("listStatus", "API key revoked.", "good");
+            await loadKeys();
+          } catch (e) { status("listStatus", e.message || "Could not revoke key.", "bad"); revoke.disabled = false; }
+        });
+        actions.append(revoke); card.append(actions);
+      }
+      list.append(card);
+    }
+  } catch (e) { list.innerHTML = '<div class="empty">Could not load keys. Check the API connection and sign-in status.</div>'; status("listStatus", e.message || "Could not load keys.", "bad"); }
+}
+$("createKey").addEventListener("click", async () => {
+  const button = $("createKey"); button.disabled = true;
+  $("newKeyArea").classList.add("hidden"); $("newKey").value = "";
+  status("createStatus", "Creating a key…");
+  try {
+    const response = await api("/v1/keys", { method: "POST", body: JSON.stringify({ label: $("label").value.trim(), model: selectedModel() }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.key) throw new Error(data.message || data.error || "Could not create key.");
+    $("newKey").value = data.key; $("testKey").value = data.key; $("newKeyArea").classList.remove("hidden");
+    status("createStatus", "Key created. Copy it now; it will not be shown again.", "good");
+    await loadKeys();
+  } catch (e) { status("createStatus", e.message || "Could not create key.", "bad"); }
+  finally { button.disabled = false; }
 });
-
+$("toggleNewKey").addEventListener("click", () => { const el = $("newKey"); el.type = el.type === "password" ? "text" : "password"; $("toggleNewKey").textContent = el.type === "password" ? "Show" : "Hide"; });
+$("copyNewKey").addEventListener("click", async () => {
+  if (!$("newKey").value) return;
+  try { await navigator.clipboard.writeText($("newKey").value); status("createStatus", "Key copied to clipboard.", "good"); }
+  catch { $("newKey").type = "text"; $("newKey").focus(); $("newKey").select(); status("createStatus", "Clipboard access was blocked. The key is selected so you can copy it manually."); }
+});
 $("test").addEventListener("click", async () => {
-  const button = $("test");
-  const key = keyInput.value.trim();
-  const message = $("message").value.trim();
-  testStatus.className = "status";
-  responseBox.textContent = "";
-  if (!key) {
-    testStatus.className = "status bad";
-    testStatus.textContent = "Generate or enter your API key first.";
-    return;
-  }
-  if (!message) {
-    testStatus.className = "status bad";
-    testStatus.textContent = "Enter a test message.";
-    return;
-  }
-  button.disabled = true;
-  button.textContent = "Testing…";
-  testStatus.textContent = "Sending request to /v1/chat/completions…";
+  const button = $("test"); const key = $("testKey").value.trim(); const message = $("message").value.trim();
+  if (!key) return status("testStatus", "Enter an API key first.", "bad");
+  if (!message) return status("testStatus", "Enter a prompt first.", "bad");
+  if (!window.ZoiWebGPU?.isSupported()) return status("testStatus", "WebGPU is not available in this browser. Try a current Chrome or Edge browser on supported hardware.", "bad");
+  button.disabled = true; button.textContent = "Running on WebGPU…"; $("response").textContent = "";
+  status("testStatus", "Validating API key and adapter assignment…");
   try {
-    const response = await fetch("/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "authorization": "Bearer " + key
-      },
-      body: JSON.stringify({ message })
+    const validation = await fetch(API_BASE + "/v1/keys", {
+      method: "GET",
+      headers: { authorization: "Bearer " + key },
+      cache: "no-store"
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || data.error || "API request failed with HTTP " + response.status);
-    }
-    const answer = data.choices?.[0]?.message?.content
-      ?? data.response
-      ?? data.message
-      ?? JSON.stringify(data, null, 2);
-    responseBox.textContent = typeof answer === "string" ? answer : JSON.stringify(answer, null, 2);
-    testStatus.className = "status good";
-    testStatus.textContent = "API request successful · HTTP " + response.status + (data.engine ? " · Engine: " + data.engine : "");
-  } catch (error) {
-    testStatus.className = "status bad";
-    testStatus.textContent = error.message || "API test failed.";
-    responseBox.textContent = "No response.";
+    const keyData = await validation.json().catch(() => ({}));
+    if (!validation.ok || !keyData.valid) throw new Error(keyData.message || "That API key is invalid or revoked.");
+    const model = keyData.model === "zoi-unfiltered" ? "zoi-unfiltered" : "zoi";
+    if (!window.ZoiWebGPU.configured(model)) throw new Error(
+      'The API key is assigned to "' + model + '", but its browser-compatible ONNX model is not configured yet. See WEBGPU_MODEL_SETUP.md and public/config.js.'
+    );
+    const answer = await window.ZoiWebGPU.generate(model, message, (message) => status("testStatus", message));
+    $("response").textContent = answer;
+    status("testStatus", "Success · " + model + " · generated locally with WebGPU. Your prompt was not sent to the model API.", "good");
+  } catch (e) {
+    status("testStatus", e.message || "Browser inference failed.", "bad");
+    $("response").textContent = "No response returned.";
   } finally {
-    button.disabled = false;
-    button.textContent = "Test API";
+    button.disabled = false; button.textContent = "Send test message";
   }
 });
+async function loadHealth() {
+  const webgpu = window.ZoiWebGPU;
+  const supported = Boolean(webgpu?.isSupported());
+  const configured = Boolean(webgpu?.configured("zoi") && webgpu?.configured("zoi-unfiltered"));
+  $("runtimeDot").className = "dot" + (supported && configured ? " good" : "");
+  $("runtimeLabel").textContent = !supported ? "WebGPU unavailable" : configured ? "Browser models configured" : "Browser model exports needed";
+  $("runtimeDetails").textContent = !supported
+    ? "This browser does not expose WebGPU. Use a supported, up-to-date browser and device."
+    : configured
+      ? "WebGPU is available and both adapter model IDs are configured. The first run downloads model files into browser cache; large models require substantial RAM and storage."
+      : "WebGPU is available. Before inference, export each custom PEFT adapter into a Transformers.js-compatible ONNX model and set the public model IDs in public/config.js. Raw PEFT folders and Google Drive folder links are not directly loadable by this runtime.";
+  try {
+    const response = await fetch(API_BASE + "/health", { cache: "no-store" });
+    if (!response.ok) throw new Error("Backend returned HTTP " + response.status);
+    await response.json();
+  } catch {
+    $("runtimeDetails").textContent += " The API is currently unreachable, so key validation and dashboard management may not work.";
+  }
+}
+$("refreshKeys").addEventListener("click", loadKeys);
+$("refreshStatus").addEventListener("click", loadHealth);
+(async () => {
+  await exchangeOAuthCode();
+  if (!currentUser) await restoreSession();
+})();
 </script>
 </body>
 </html>

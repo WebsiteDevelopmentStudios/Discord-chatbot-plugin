@@ -330,48 +330,17 @@ export function generateReply({ message, conversationId = "default", history = [
     conversationId: id
   };
 }
-// Zoi runs entirely on its own local code and bundled knowledge. Deliberately
-// do not call hosted or OpenAI-compatible model providers, even if old provider
-// environment variables remain configured on the host.
-async function searchLearnedKnowledge(message) {
-  const rawBase = process.env.ZOI_LEARNING_URL || "";
-  const base = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
-  const token = process.env.ZOI_LEARNING_TOKEN || "";
-  if (!base || !token) return null;
-  try {
-    const url = `${base}/v1/knowledge/search?q=${encodeURIComponent(String(message).slice(0, 1000))}`;
-    const response = await fetch(url, {
-      headers: { authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(1200)
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.match && typeof data.match.answer === "string" ? data.match : null;
-  } catch {
-    return null;
-  }
-}
-
+// This compatibility helper is intentionally local-only. It never calls an external
+// model provider or learning database; the dashboard chat route requires the custom
+// PEFT adapter runtime and will not silently substitute this fallback engine.
 export async function generateReplyAsync({ message, conversationId = "default", history = [] }) {
-  const reply = generateReply({ message, conversationId, history });
-  // Approved corrections are consulted only when the local engine cannot answer.
-  // The learning store contains curated corrections, not a hosted language model.
-  if (reply.intent === "unknown_question" || reply.intent === "general_chat") {
-    const learned = await searchLearnedKnowledge(message);
-    if (learned) {
-      reply.choices[0].message.content = learned.answer;
-      reply.intent = "learned_knowledge";
-      reply.confidence = Math.min(0.92, 0.58 + learned.score * 0.3);
-      reply.learnedKnowledgeId = learned.id;
-    }
-  }
   return {
-    ...reply,
-    engine: "local",
+    ...generateReply({ message, conversationId, history }),
+    engine: "local-rules",
     providerStatus: {
       configured: false,
-      provider: "local",
-      reason: "External model providers are disabled; responses use Zoi's local engine."
+      provider: "local-rules",
+      reason: "This fallback engine is not the trained Zoi adapter."
     }
   };
 }

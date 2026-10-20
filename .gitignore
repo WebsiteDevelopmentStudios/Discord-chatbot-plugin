@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+data/
+users.db
+*.db
+*.db-shm
+*.db-wal
