@@ -252,7 +252,7 @@ export async function handleRequest(req, res) {
         } catch (error) {
           return send(res, error.status || 503, {
             error: "inference_unavailable",
-            message: "The trained-model worker is unavailable or timed out. Start the Colab inference runtime and try again."
+            message: "The local custom-model inference runtime is unavailable or timed out."
           });
         }
       } else {
