@@ -19,8 +19,8 @@ The dashboard uses Discord OAuth for identity. API keys are assigned to a Discor
 - Sign in with Discord.
 - Create a key assigned to either `zoi` or `zoi-unfiltered`.
 - List and revoke only keys belonging to the signed-in Discord account.
-- Test an API key against the chat endpoint.
-- View backend and inference configuration status.
+- Test an API key using browser-side WebGPU inference.
+- View WebGPU capability and model-export configuration status.
 
 API keys are shown only at creation time. The database stores SHA-256 hashes, not the original API key. The dashboard session token is held in the current browser tab's `sessionStorage`, and the server stores only its hash.
 
@@ -48,11 +48,13 @@ The API listens on `PORT` (default `3000`). Set `PERSISTENT_DIR` to the persiste
 
 If you serve the dashboard directly from the Node.js API, leave `ZOI_API_BASE` empty and set `WEB_ORIGIN` to the API's own HTTPS origin.
 
-## Custom-model inference status
+## Browser WebGPU inference
 
-The dashboard and API-key management do not themselves load model weights. The existing custom adapters require a compatible inference runtime that can load the Llama base model and both PEFT adapters. This repository does **not** silently substitute another model when the adapter runtime is missing; the dashboard reports inference as unconfigured, and the chat endpoint returns an inference-unavailable error when a configured inference worker cannot be reached.
+The dashboard test-message UI validates the selected API key and then runs the assigned custom adapter in the browser with WebGPU. Prompts and generated text stay in the browser; only API-key validation goes to the Node API. The browser requires a **public, Transformers.js-compatible ONNX export** for each adapter. Raw PEFT folders and Google Drive folder links are not directly loadable by the browser runtime.
 
-Bot-Hosting.net's available RAM, CPU, disk, and process limits must be checked before choosing a truly local runtime. An API key or SQLite database does not provide the compute needed for an 8B model. The previous Colab/tunnel setup is not part of this target architecture.
+See [WEBGPU_MODEL_SETUP.md](WEBGPU_MODEL_SETUP.md) for the required export and deployment steps. Set the public exported model repository IDs in `public/config.js`. Until both IDs point to verified compatible exports, the UI reports that model exports are needed rather than using a substitute model.
+
+The server-side `POST /v1/chat/completions` endpoint is separate and still requires a server-accessible inference runtime. Browser GPU execution cannot service arbitrary external API clients. Bot-Hosting.net remains responsible for Discord OAuth, key ownership/revocation, and SQLite, not loading the 8B model.
 
 ## Security notes
 
