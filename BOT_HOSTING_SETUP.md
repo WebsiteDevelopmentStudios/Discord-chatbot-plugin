@@ -36,6 +36,14 @@ Set these environment variables in the hosting panel:
 
 Do not commit real secrets to GitHub. If the host does not provide a persistent directory, ask its documentation/support which path persists across restarts before going live. SQLite cannot guarantee persistence if the database file lives on ephemeral storage.
 
+For the custom adapters, the API accepts only a **local** inference URL. If a compatible inference server is running on the same host, set:
+
+- `ZOI_INFERENCE_URL=http://127.0.0.1:7860` (replace the port if needed)
+- `ZOI_INFERENCE_TOKEN` to a long random secret shared only with that local process
+- `ZOI_INFERENCE_TIMEOUT_MS=120000` (optional)
+
+Remote inference URLs are rejected by the API. Do not set these values until a real local runtime that loads the base model and both PEFT adapters is installed and tested. The current Colab-specific Python script is not a Bot-Hosting.net runtime.
+
 Start the service with:
 
 ```bash
