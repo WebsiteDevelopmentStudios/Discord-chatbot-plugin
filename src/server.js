@@ -116,7 +116,6 @@ export async function handleRequest(req, res) {
   const requestOrigin = req.headers.origin || "";
   if (allowedOrigin && requestOrigin === allowedOrigin) {
     res.setHeader("access-control-allow-origin", allowedOrigin);
-    res.setHeader("access-control-allow-credentials", "false");
     res.setHeader("access-control-allow-methods", "GET, POST, DELETE, OPTIONS");
     res.setHeader("access-control-allow-headers", "authorization, content-type");
     res.setHeader("vary", "Origin");
