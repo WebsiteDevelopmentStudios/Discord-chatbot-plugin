@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Zoi custom-model dashboard">
+<meta name="referrer" content="no-referrer">
 <title>Zoi Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="./config.js"></script>
 <style>
 :root{font-family:"DM Sans",system-ui,sans-serif;color:#edf1ff;background:#080a11;--muted:#9ba5bb;--line:#252d40;--panel:#101522;--panel2:#0b101b;--accent:#b8b4e4;--accent2:#93d5d0;--bad:#f0a3b1;--good:#9ce0c6}
@@ -122,10 +120,6 @@ function signedOut() {
   $("account").classList.add("hidden");
 }
 async function login() {
-  if (!API_BASE && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-    status("loginStatus", "Set ZOI_API_BASE in public/config.js to your bot-host API URL before deploying this page.", "bad");
-    return;
-  }
   location.href = API_BASE + "/auth/discord";
 }
 $("login").addEventListener("click", login);
